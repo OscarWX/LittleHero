@@ -12,6 +12,53 @@ export interface GeneratedStory {
   totalPages: number
 }
 
+// Fallback story generator when OpenAI fails
+function createFallbackStory(
+  childProfiles: any[],
+  theme: string,
+  qualities: string
+): GeneratedStory {
+  const characterNames = childProfiles.map(p => p.name).join(' and ')
+  const title = `${characterNames}'s ${theme} Adventure`
+  
+  return {
+    title,
+    totalPages: 6,
+    pages: [
+      {
+        pageNumber: 1,
+        text: `Once upon a time, ${characterNames} lived in a wonderful place where anything was possible.`,
+        imageDescription: `A cheerful illustration showing ${characterNames} in a bright, colorful setting that matches their appearance and personality.`
+      },
+      {
+        pageNumber: 2,
+        text: `One day, ${characterNames} discovered something amazing that would lead to a great adventure.`,
+        imageDescription: `${characterNames} looking excited and curious, discovering something magical or interesting in their environment.`
+      },
+      {
+        pageNumber: 3,
+        text: `With ${qualities}, ${characterNames} decided to explore and learn something new.`,
+        imageDescription: `${characterNames} beginning their adventure, showing determination and the positive qualities mentioned.`
+      },
+      {
+        pageNumber: 4,
+        text: `Along the way, ${characterNames} met new friends and faced fun challenges together.`,
+        imageDescription: `${characterNames} interacting with friendly characters or overcoming a gentle, age-appropriate challenge.`
+      },
+      {
+        pageNumber: 5,
+        text: `By working together and being kind, ${characterNames} made everything better for everyone.`,
+        imageDescription: `${characterNames} helping others or solving problems, showing the positive impact of their actions.`
+      },
+      {
+        pageNumber: 6,
+        text: `${characterNames} learned that with ${qualities}, every day can be a wonderful adventure!`,
+        imageDescription: `A happy ending scene with ${characterNames} smiling, surrounded by friends in a bright, celebratory setting.`
+      }
+    ]
+  }
+}
+
 export async function generateChildrenStory(
   childProfiles: any[],
   theme: string,
@@ -89,6 +136,12 @@ STORY GUIDELINES:
 Please ensure the story is engaging, educational, and celebrates the unique qualities of ${childProfiles.map(p => p.name).join(' and ')}.`
 
   try {
+    // Check if API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key not found')
+      return createFallbackStory(childProfiles, theme, qualitiesList)
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -107,7 +160,8 @@ Please ensure the story is engaging, educational, and celebrates the unique qual
 
     const response = completion.choices[0]?.message?.content
     if (!response) {
-      throw new Error('No response from OpenAI')
+      console.error('No response content from OpenAI')
+      return createFallbackStory(childProfiles, theme, qualitiesList)
     }
 
     // Parse the JSON response
@@ -116,7 +170,8 @@ Please ensure the story is engaging, educational, and celebrates the unique qual
       
       // Validate the response structure
       if (!storyData.title || !storyData.pages || !Array.isArray(storyData.pages)) {
-        throw new Error('Invalid story structure received from OpenAI')
+        console.error('Invalid story structure from OpenAI:', storyData)
+        return createFallbackStory(childProfiles, theme, qualitiesList)
       }
 
       // Ensure page numbers are sequential
@@ -128,12 +183,22 @@ Please ensure the story is engaging, educational, and celebrates the unique qual
 
       return storyData
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', response)
-      throw new Error('Failed to parse story response from OpenAI')
+      console.error('Failed to parse OpenAI response:', response, parseError)
+      return createFallbackStory(childProfiles, theme, qualitiesList)
     }
 
   } catch (error) {
     console.error('OpenAI API Error:', error)
-    throw new Error('Failed to generate story with OpenAI')
+    // Provide more specific error information
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        console.error('OpenAI API key issue')
+      } else if (error.message.includes('quota')) {
+        console.error('OpenAI API quota exceeded')
+      } else if (error.message.includes('rate limit')) {
+        console.error('OpenAI API rate limit exceeded')
+      }
+    }
+    return createFallbackStory(childProfiles, theme, qualitiesList)
   }
 } 

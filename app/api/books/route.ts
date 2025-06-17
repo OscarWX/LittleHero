@@ -1,17 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { 
-  fetchUserBooks, 
   createBook, 
   updateBook, 
   deleteBook,
   type CreateBookPayload,
   type UpdateBookPayload 
 } from '@/lib/db/books'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+
+// Helper to fetch all books for the authenticated user along with child profiles
+async function getUserBooks() {
+  const supabase = createRouteHandlerClient({ cookies })
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return []
+
+  const { data: books, error: booksError } = await supabase
+    .from('books')
+    .select(
+      `*,
+        book_profiles:book_profiles(id, child_profiles:child_profiles(*))
+      `
+    )
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (booksError) {
+    throw new Error(booksError.message)
+  }
+
+  // Flatten child profile links
+  return (
+    books || []
+  ).map((b: any) => ({
+    ...b,
+    child_profiles: (b.book_profiles || []).map((link: any) => link.child_profiles),
+  }))
+}
 
 // GET /api/books - Fetch all user's books
 export async function GET() {
   try {
-    const books = await fetchUserBooks()
+    const books = await getUserBooks()
     return NextResponse.json({ books })
   } catch (error) {
     console.error('Error fetching books:', error)
