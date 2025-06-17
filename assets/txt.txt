@@ -1,0 +1,19 @@
+Please implement the feature described below. If it's a new feature, create new files(if needed) with clear, appropriate names. Keep the code clean, well-structured, and commented. Avoid bulky or unclear output—make it easy to understand and use.
+
+Console sign-in details
+Email sign-in instructions
+Console sign-in URL
+
+AKIAURLGVLTMS3XQPUXJ
+bEIMYFxK17FO22F6Xs+6LA37VTvZR6AbVTpXP1QE
+
+I want you to test run for me and tell me how should i check if the result is correct  and the pictures are indeed in s3! 
+
+and then read about what t
+
+http://localhost:8000/docs
+
+dreas
+earthCapital
+AnonymousOtter
+bluebutnotreally
