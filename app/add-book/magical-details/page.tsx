@@ -2,9 +2,8 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { ArrowLeft, Upload, X } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import AnimatedProgressBar from "@/components/animated-progress-bar"
 
@@ -12,8 +11,6 @@ export default function MagicalDetailsPage() {
   const router = useRouter()
   const [bookId, setBookId] = useState<string>("")
   const [magicalDetails, setMagicalDetails] = useState<string>("")
-  const [hasImage, setHasImage] = useState<boolean>(false)
-  const [imageUrl, setImageUrl] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -38,17 +35,6 @@ export default function MagicalDetailsPage() {
     loadBookData()
   }, [router])
 
-  const handleImageUpload = () => {
-    setHasImage(true)
-    setImageUrl("/magical-item.png")
-  }
-
-  const handleRemoveImage = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setHasImage(false)
-    setImageUrl("")
-  }
-
   const handleNext = async () => {
     if (!bookId) return
 
@@ -63,8 +49,7 @@ export default function MagicalDetailsPage() {
         },
         body: JSON.stringify({
           bookId,
-          magical_details: magicalDetails,
-          magical_image_url: hasImage && imageUrl ? imageUrl : null
+          magical_details: magicalDetails
         }),
       })
 
@@ -113,40 +98,6 @@ export default function MagicalDetailsPage() {
               value={magicalDetails}
               onChange={(e) => setMagicalDetails(e.target.value)}
             />
-
-            <div className="mt-4">
-              <p className="text-gray-700 nunito-font mb-2 font-bold">
-                Add an image of the magical detail (optional):
-              </p>
-
-              <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer"
-                onClick={handleImageUpload}
-              >
-                {hasImage && imageUrl ? (
-                  <div className="relative w-full max-w-xs">
-                    <Image
-                      src={imageUrl || "/placeholder.svg"}
-                      alt="Magical item"
-                      width={200}
-                      height={200}
-                      className="rounded-lg mx-auto"
-                    />
-                    <button
-                      onClick={handleRemoveImage}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Upload size={32} className="text-gray-400 mb-2" />
-                    <p className="text-gray-600 nunito-font text-center">Click to upload a picture of your magical detail</p>
-                  </>
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="flex gap-4">

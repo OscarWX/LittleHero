@@ -3,9 +3,8 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Upload, X } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import AnimatedProgressBar from "@/components/animated-progress-bar"
 
@@ -13,8 +12,6 @@ export default function SpecialMemoriesPage() {
   const router = useRouter()
   const [bookId, setBookId] = useState<string>("")
   const [specialMemories, setSpecialMemories] = useState<string>("")
-  const [hasImage, setHasImage] = useState<boolean>(false)
-  const [imageUrl, setImageUrl] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -39,17 +36,6 @@ export default function SpecialMemoriesPage() {
     loadBookData()
   }, [router])
 
-  const handleImageUpload = () => {
-    setHasImage(true)
-    setImageUrl("/special-memory.png")
-  }
-
-  const handleRemoveImage = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setHasImage(false)
-    setImageUrl("")
-  }
-
   const handleNext = async () => {
     if (!bookId) return
 
@@ -64,8 +50,7 @@ export default function SpecialMemoriesPage() {
         },
         body: JSON.stringify({
           bookId,
-          special_memories: specialMemories,
-          special_memories_image_url: hasImage && imageUrl ? imageUrl : null
+          special_memories: specialMemories
         }),
       })
 
@@ -114,40 +99,6 @@ export default function SpecialMemoriesPage() {
               value={specialMemories}
               onChange={(e) => setSpecialMemories(e.target.value)}
             />
-
-            <div className="mt-4">
-              <p className="text-gray-700 nunito-font mb-2 font-bold">
-                Add a photo of the memory (optional):
-              </p>
-
-              <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer"
-                onClick={handleImageUpload}
-              >
-                {hasImage && imageUrl ? (
-                  <div className="relative w-full max-w-xs">
-                    <Image
-                      src={imageUrl || "/placeholder.svg"}
-                      alt="Special memory"
-                      width={200}
-                      height={200}
-                      className="rounded-lg mx-auto"
-                    />
-                    <button
-                      onClick={handleRemoveImage}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Upload size={32} className="text-gray-400 mb-2" />
-                    <p className="text-gray-600 nunito-font text-center">Click to upload a photo of the memory</p>
-                  </>
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="flex gap-4">

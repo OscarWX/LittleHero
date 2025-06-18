@@ -12,52 +12,12 @@ export interface GeneratedStory {
   totalPages: number
 }
 
-// Fallback story generator when OpenAI fails
-function createFallbackStory(
-  childProfiles: any[],
-  theme: string,
-  qualities: string
-): GeneratedStory {
-  const characterNames = childProfiles.map(p => p.name).join(' and ')
-  const title = `${characterNames}'s ${theme} Adventure`
-  
-  return {
-    title,
-    totalPages: 6,
-    pages: [
-      {
-        pageNumber: 1,
-        text: `Once upon a time, ${characterNames} lived in a wonderful place where anything was possible.`,
-        imageDescription: `A cheerful illustration showing ${characterNames} in a bright, colorful setting that matches their appearance and personality.`
-      },
-      {
-        pageNumber: 2,
-        text: `One day, ${characterNames} discovered something amazing that would lead to a great adventure.`,
-        imageDescription: `${characterNames} looking excited and curious, discovering something magical or interesting in their environment.`
-      },
-      {
-        pageNumber: 3,
-        text: `With ${qualities}, ${characterNames} decided to explore and learn something new.`,
-        imageDescription: `${characterNames} beginning their adventure, showing determination and the positive qualities mentioned.`
-      },
-      {
-        pageNumber: 4,
-        text: `Along the way, ${characterNames} met new friends and faced fun challenges together.`,
-        imageDescription: `${characterNames} interacting with friendly characters or overcoming a gentle, age-appropriate challenge.`
-      },
-      {
-        pageNumber: 5,
-        text: `By working together and being kind, ${characterNames} made everything better for everyone.`,
-        imageDescription: `${characterNames} helping others or solving problems, showing the positive impact of their actions.`
-      },
-      {
-        pageNumber: 6,
-        text: `${characterNames} learned that with ${qualities}, every day can be a wonderful adventure!`,
-        imageDescription: `A happy ending scene with ${characterNames} smiling, surrounded by friends in a bright, celebratory setting.`
-      }
-    ]
-  }
-}
+// ------------------------------
+// NOTE: A fallback story is intentionally **removed** so that the caller can
+// decide how to respond when the OpenAI request fails.  Returning a default
+// story made it difficult to detect errors, so we now surface problems as
+// exceptions instead of silently succeeding.
+// ------------------------------
 
 export async function generateChildrenStory(
   childProfiles: any[],
@@ -110,7 +70,8 @@ BOOK SPECIFICATIONS:
 - Language should be simple but engaging
 - Each page needs a detailed image description for illustration
 
-FORMAT YOUR RESPONSE AS JSON:
+FORMAT YOUR RESPONSE STRICTLY AS JSON (no markdown, no code fences, no extra text):
+
 {
   "title": "Story Title",
   "pages": [
@@ -136,10 +97,10 @@ STORY GUIDELINES:
 Please ensure the story is engaging, educational, and celebrates the unique qualities of ${childProfiles.map(p => p.name).join(' and ')}.`
 
   try {
-    // Check if API key is available
+    // Ensure we have an API key available.  Without it we cannot proceed, so we
+    // throw an error instead of returning a fabricated story.
     if (!process.env.OPENAI_API_KEY) {
-      console.error('OpenAI API key not found')
-      return createFallbackStory(childProfiles, theme, qualitiesList)
+      throw new Error('OpenAI API key not configured')
     }
 
     const completion = await openai.chat.completions.create({
@@ -158,10 +119,23 @@ Please ensure the story is engaging, educational, and celebrates the unique qual
       max_tokens: 2000,
     })
 
-    const response = completion.choices[0]?.message?.content
+    let response = completion.choices[0]?.message?.content
     if (!response) {
-      console.error('No response content from OpenAI')
-      return createFallbackStory(childProfiles, theme, qualitiesList)
+      throw new Error('OpenAI request succeeded but no content was returned')
+    }
+
+    // Clean common formatting issues (e.g., markdown code fences)
+    response = response.trim()
+    if (response.startsWith('```')) {
+      // Strip the first line (``` or ```json) and the trailing ```
+      response = response.replace(/^```[a-zA-Z]*\n/, '').replace(/```$/, '').trim()
+    }
+
+    // If response has leading text before the JSON object, attempt to extract
+    const firstBrace = response.indexOf('{')
+    const lastBrace = response.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      response = response.substring(firstBrace, lastBrace + 1)
     }
 
     // Parse the JSON response
@@ -170,8 +144,7 @@ Please ensure the story is engaging, educational, and celebrates the unique qual
       
       // Validate the response structure
       if (!storyData.title || !storyData.pages || !Array.isArray(storyData.pages)) {
-        console.error('Invalid story structure from OpenAI:', storyData)
-        return createFallbackStory(childProfiles, theme, qualitiesList)
+        throw new Error('OpenAI returned invalid story structure')
       }
 
       // Ensure page numbers are sequential
@@ -184,21 +157,13 @@ Please ensure the story is engaging, educational, and celebrates the unique qual
       return storyData
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', response, parseError)
-      return createFallbackStory(childProfiles, theme, qualitiesList)
+      throw new Error('Unable to parse JSON returned by OpenAI')
     }
 
   } catch (error) {
     console.error('OpenAI API Error:', error)
-    // Provide more specific error information
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        console.error('OpenAI API key issue')
-      } else if (error.message.includes('quota')) {
-        console.error('OpenAI API quota exceeded')
-      } else if (error.message.includes('rate limit')) {
-        console.error('OpenAI API rate limit exceeded')
-      }
-    }
-    return createFallbackStory(childProfiles, theme, qualitiesList)
+    // Re-throw so that the caller can handle the problem (e.g. surface an error
+    // to the UI instead of hiding it behind a generic fallback story).
+    throw error
   }
 } 
