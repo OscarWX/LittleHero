@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, BookOpen, Plus, Clock, CheckCircle, ImageIcon } from "lucide-react"
+import { User, BookOpen, Plus, Clock, CheckCircle, ImageIcon, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { fetchUserChildProfiles, type ChildProfile } from "@/lib/db/child-profiles"
@@ -152,31 +152,47 @@ function ProfilesTab({ profiles }: { profiles: ChildProfile[] }) {
 function BooksTab() {
   const [books, setBooks] = useState<BookWithProfiles[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const { user, loading: authLoading } = useAuth()
 
   // Load books from Supabase
-  useEffect(() => {
-    const loadBooks = async () => {
-      if (authLoading || !user) {
-        return
-      }
-
-      try {
-        const userBooks = await fetchUserBooks()
-        setBooks(userBooks)
-      } catch (e) {
-        console.error("Error loading books", e)
-      }
-      setIsLoaded(true)
+  const loadBooks = async (showRefreshing = false) => {
+    if (authLoading || !user) {
+      return
     }
 
+    if (showRefreshing) setIsRefreshing(true)
+
+    try {
+      const userBooks = await fetchUserBooks()
+      setBooks(userBooks)
+    } catch (e) {
+      console.error("Error loading books", e)
+    }
+    
+    setIsLoaded(true)
+    if (showRefreshing) setIsRefreshing(false)
+  }
+
+  useEffect(() => {
     loadBooks()
+  }, [user, authLoading])
+
+  // Auto-refresh every 30 seconds to check for status updates
+  useEffect(() => {
+    if (!user || authLoading) return
+
+    const interval = setInterval(() => {
+      loadBooks()
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
   }, [user, authLoading])
 
   // Get status icon and text for a book
   const getBookStatus = (status?: string) => {
     switch (status) {
-      case "creating pictures":
+      case "creating-pictures":
         return {
           icon: <ImageIcon size={18} className="text-blue-600" />,
           text: "Creating pictures...",
@@ -205,7 +221,21 @@ function BooksTab() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Books</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Books</h1>
+        <button
+          onClick={() => loadBooks(true)}
+          disabled={isRefreshing}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+            isRefreshing 
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+          }`}
+        >
+          <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-8 gap-y-10 justify-items-center">
         {/* Existing books */}
@@ -214,7 +244,7 @@ function BooksTab() {
 
           return (
             <div key={book.id} className="flex flex-col items-center">
-              <Link href={`/book/${book.id}`} className="block">
+              <Link href={`/book/${book.id}/preview`} className="block">
                 <div className="w-32 h-32 rounded-lg flex items-center justify-center mb-2 overflow-hidden relative shadow-md shadow-gray-400 bg-gradient-to-br from-yellow-200 to-orange-200">
                   {book.cover_url ? (
                     <img

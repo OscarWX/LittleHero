@@ -116,7 +116,8 @@ export default function StoryPreviewPage() {
     try {
       setIsLoading(true)
       
-      // Update book status to ready
+      // Book should stay in creating-pictures status - dashboard will check if all images exist
+      // and automatically update to ready when all page images are uploaded
       const response = await fetch('/api/books/creation', {
         method: 'PATCH',
         headers: {
@@ -124,7 +125,7 @@ export default function StoryPreviewPage() {
         },
         body: JSON.stringify({
           bookId: book.id,
-          status: 'ready'
+          status: 'creating-pictures'
         }),
       })
 
@@ -227,10 +228,10 @@ export default function StoryPreviewPage() {
             <div className="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
               <Check size={40} className="text-green-600" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4 junegull-font">CONGRATULATIONS!</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4 junegull-font">STORY CREATED!</h2>
             <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
               <p className="text-gray-800 nunito-font mb-4">
-                Your personalized story has been created! It's ready to read and enjoy.
+                Your personalized story has been created! Pictures are being prepared for each page. You can view your story in the dashboard.
               </p>
               <div className="flex items-center justify-center space-x-2 text-yellow-600 nunito-font">
                 <BookOpen size={18} />

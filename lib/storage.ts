@@ -113,4 +113,90 @@ export async function getSignedUrl(bucket: string, path: string): Promise<string
       .getPublicUrl(path)
     return publicUrl
   }
+}
+
+export async function createBookPageFolderStructure(bookId: string, pageCount: number): Promise<void> {
+  const supabase = createSupabaseClient()
+  // No need for user session – this may run in a server context.
+
+  // Create a placeholder file in each page folder to ensure the folder exists
+  for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+    const folderPath = `${bookId}/${pageNumber}/.placeholder`
+    
+    try {
+      // Create a minimal placeholder file
+      const placeholderBlob = new Blob([''], { type: 'text/plain' })
+      
+      await supabase.storage
+        .from(STORAGE_BUCKETS.BOOK_PAGES)
+        .upload(folderPath, placeholderBlob, {
+          cacheControl: '3600',
+          upsert: true
+        })
+      
+      console.log(`Created folder for book ${bookId}, page ${pageNumber}`)
+    } catch (error) {
+      console.error(`Error creating folder for page ${pageNumber}:`, error)
+      // Continue with other folders even if one fails
+    }
+  }
+}
+
+export async function checkBookPageImages(bookId: string): Promise<{ pageNumber: number; hasImage: boolean }[]> {
+  const supabase = createSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    throw new Error('User must be authenticated')
+  }
+
+  // Get all pages for this book from the database
+  const { data: pages, error: pagesError } = await supabase
+    .from('book_pages')
+    .select('page_number')
+    .eq('book_id', bookId)
+    .order('page_number')
+
+  if (pagesError) {
+    throw new Error(pagesError.message)
+  }
+
+  if (!pages || pages.length === 0) {
+    return []
+  }
+
+  const results: { pageNumber: number; hasImage: boolean }[] = []
+
+  for (const page of pages) {
+    const prefix = `${bookId}/${page.page_number}`
+    const { data: objects, error: listError } = await supabase.storage
+      .from(STORAGE_BUCKETS.BOOK_PAGES)
+      .list(prefix, { limit: 10 })
+
+    const hasImage = !listError && objects && objects.some(obj => 
+      obj.name !== '.placeholder' && obj.name !== '' 
+    )
+
+    results.push({
+      pageNumber: page.page_number,
+      hasImage: Boolean(hasImage)
+    })
+  }
+
+  return results
+}
+
+export async function ensureBookFolder(bookId: string): Promise<void> {
+  const supabase = createSupabaseClient()
+  // No need for user session – this may run in a server context.
+
+  const initPath = `${bookId}/.init`
+  const initBlob = new Blob([''], { type: 'text/plain' })
+  try {
+    await supabase.storage
+      .from(STORAGE_BUCKETS.BOOK_PAGES)
+      .upload(initPath, initBlob, { cacheControl: '3600', upsert: true })
+  } catch (err) {
+    console.error('Error ensuring book folder', err)
+  }
 } 

@@ -217,7 +217,7 @@ export default function ProfileDetailsPage() {
               <div className="grid grid-cols-2 gap-4">
                 {books.map((book) => (
                   <div key={book.id} className="flex flex-col items-center">
-                    <Link href={`/book/${book.id}`} className="block">
+                    <Link href={`/book/${book.id}/preview`} className="block">
                       <div className="w-20 h-24 bg-gradient-to-br from-blue-200 to-purple-200 rounded-lg flex items-center justify-center mb-2 shadow-md">
                         {book.cover_url ? (
                           <Image

@@ -136,7 +136,7 @@ export default function BookPreviewPage() {
         const bookIndex = books.findIndex((b: BookData) => b.id === bookId)
         if (bookIndex !== -1) {
           const updatedBook = { ...books[bookIndex] }
-          updatedBook.status = "creating pictures"
+          updatedBook.status = "creating-pictures"
           updatedBook.pictures = undefined
           books[bookIndex] = updatedBook
           localStorage.setItem("books", JSON.stringify(books))

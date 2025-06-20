@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { generateChildrenStory } from '@/lib/openai'
+import { ensureBookFolder } from '@/lib/storage'
 
 // Helper to fetch a book together with its child profiles for the current user
 async function fetchBookWithProfiles(supabase: any, bookId: string, userId: string) {
@@ -111,6 +112,9 @@ export async function POST(
           image_url: null,
         })
       }
+
+      // Create root folder in storage for illustrators
+      await ensureBookFolder(bookId)
 
     } catch (err) {
       // On error, revert status back to creating

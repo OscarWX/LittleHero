@@ -1,6 +1,7 @@
 import { createSupabaseClient } from '@/lib/supabase'
 import { ChildProfile } from './child-profiles'
 import { generateChildrenStory, type GeneratedStory } from '@/lib/openai'
+import { STORAGE_BUCKETS, ensureBookFolder } from '@/lib/storage'
 
 export interface Book {
   id: string
@@ -61,7 +62,9 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
   
   if (!user) return []
 
-  // Fetch books
+  // Fetch all books for this user regardless of status so that we can
+  // dynamically determine if they should now be marked as "ready" by
+  // inspecting storage.  Sorting by creation date keeps the newest at the top.
   const { data: books, error: booksError } = await supabase
     .from('books')
     .select('*')
@@ -76,7 +79,39 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
     return []
   }
 
-  // Fetch associated child profiles for each book
+  // Helper that checks if every page for a book has at least one image file
+  async function bookHasAllPageImages(bookId: string): Promise<boolean> {
+    // Query all page numbers belonging to this book
+    const { data: pages, error: pagesError } = await supabase
+      .from('book_pages')
+      .select('page_number')
+      .eq('book_id', bookId)
+
+    if (pagesError) {
+      throw new Error(pagesError.message)
+    }
+
+    if (!pages || pages.length === 0) {
+      return false
+    }
+
+    for (const page of pages) {
+      const prefix = `${bookId}/${page.page_number}`
+      const { data: objects, error: listError } = await supabase.storage
+        .from(STORAGE_BUCKETS.BOOK_PAGES)
+        .list(prefix, { limit: 1 })
+
+      if (listError || !objects || objects.length === 0) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  // Fetch associated child profiles for each book and, if the book is in
+  // the "creating-pictures" phase, verify if all images now exist. If so we
+  // immediately update the book status to "ready".
   const booksWithProfiles: BookWithProfiles[] = []
   
   for (const book of books) {
@@ -93,9 +128,33 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
 
     const childProfiles = profileLinks?.map((link: any) => link.child_profiles).filter(Boolean) || []
 
+    // If book is still creating pictures, check storage for completion
+    let finalStatus = book.status
+    if (book.status === 'creating-pictures') {
+      try {
+        const complete = await bookHasAllPageImages(book.id)
+        if (complete) {
+          // Update DB status to ready
+          const { error: updateErr } = await supabase
+            .from('books')
+            .update({ status: 'ready' })
+            .eq('id', book.id)
+            .eq('user_id', user.id)
+
+          if (!updateErr) {
+            finalStatus = 'ready'
+          }
+        }
+      } catch (e) {
+        // Fail silently – dashboard will simply continue to show current status
+        console.error('Error checking page images:', e)
+      }
+    }
+
     booksWithProfiles.push({
       ...book,
-      child_profiles: childProfiles
+      status: finalStatus,
+      child_profiles: childProfiles,
     })
   }
 
@@ -150,6 +209,13 @@ export async function createBook(payload: CreateBookPayload): Promise<BookWithPr
   if (!user) {
     throw new Error('User must be authenticated')
   }
+
+  // Optionally remove orphaned/incomplete books for this user
+  await supabase
+    .from('books')
+    .delete()
+    .eq('user_id', user.id)
+    .in('status', ['creating', 'draft'])
 
   const { profile_ids, ...bookData } = payload
 
@@ -438,6 +504,9 @@ export async function generateStoryForBook(bookId: string): Promise<BookWithProf
         page.text
       )
     }
+
+    // Ensure a root folder exists for this book in storage so illustrators have a place to upload
+    await ensureBookFolder(bookId)
 
     // Return the updated book
     return await fetchBookById(bookId) as BookWithProfiles

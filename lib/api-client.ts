@@ -55,4 +55,13 @@ export const bookApi = {
   generateStory: (bookId: string) => apiCall<{ book: any }>(`/api/books/${bookId}/generate-story`, {
     method: 'POST',
   }),
+}
+
+// Book pages API
+export const bookPageApi = {
+  updateImage: (pageId: number, image_url: string) =>
+    apiCall<{ success: boolean }>(`/api/book-pages/${pageId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ image_url }),
+    }),
 } 
