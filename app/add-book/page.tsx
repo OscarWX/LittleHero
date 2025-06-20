@@ -96,6 +96,8 @@ export default function AddBookPage() {
   // Redirect to sign-in if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
+      // Clear local loading state so that the spinner is not shown forever
+      setIsLoading(false)
       router.push("/sign-in")
     }
   }, [user, authLoading, router])

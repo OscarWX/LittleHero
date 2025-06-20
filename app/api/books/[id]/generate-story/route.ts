@@ -114,7 +114,7 @@ export async function POST(
       }
 
       // Create root folder in storage for illustrators
-      await ensureBookFolder(bookId)
+      await ensureBookFolder(bookId, supabase)
 
     } catch (err) {
       // On error, revert status back to creating

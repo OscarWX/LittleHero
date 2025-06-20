@@ -64,15 +64,25 @@ export async function GET(
           // Otherwise, look for any file in book-pages/{book.id}/{page.page_number}/
           const { data: objects, error: listError } = await supabase.storage
             .from(STORAGE_BUCKETS.BOOK_PAGES)
-            .list(`${book.id}/${page.page_number}`, { limit: 1 })
+            .list(`${book.id}/${page.page_number}`, { limit: 10 })
 
           if (listError || !objects || objects.length === 0) {
             complete = false
             break
           }
 
-          // Optionally, store first file path as image_url
-          const foundPath = `${book.id}/${page.page_number}/${objects[0].name}`
+          // Check for actual image files (not placeholders)
+          const realImages = objects.filter(obj => 
+            obj.name !== '.placeholder' && obj.name !== '' && obj.name !== '.init'
+          )
+
+          if (realImages.length === 0) {
+            complete = false
+            break
+          }
+
+          // Store first real image file path as image_url
+          const foundPath = `${book.id}/${page.page_number}/${realImages[0].name}`
           await supabase.from('book_pages').update({ image_url: foundPath }).eq('id', page.id)
         }
 

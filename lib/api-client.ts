@@ -41,6 +41,7 @@ export const profileApi = {
 export const bookApi = {
   getAll: () => apiCall<{ books: any[] }>('/api/books'),
   getById: (id: string) => apiCall<{ book: any }>(`/api/books/${id}`),
+  getPages: (bookId: string) => apiCall<{ pages: any[] }>(`/api/books/${bookId}/pages`),
   create: (data: any) => apiCall<{ book: any }>('/api/books', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -64,4 +65,21 @@ export const bookPageApi = {
       method: 'PUT',
       body: JSON.stringify({ image_url }),
     }),
+  
+  uploadImage: async (pageId: number, imageFile: File) => {
+    const formData = new FormData()
+    formData.append('image', imageFile)
+    
+    const response = await fetch(`/api/book-pages/${pageId}/upload`, {
+      method: 'POST',
+      body: formData,
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Upload failed')
+    }
+    
+    return response.json()
+  },
 } 

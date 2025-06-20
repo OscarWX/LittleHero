@@ -79,12 +79,12 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
     return []
   }
 
-  // Helper that checks if every page for a book has at least one image file
+  // Helper that checks if every page for a book has at least one image file or image_url
   async function bookHasAllPageImages(bookId: string): Promise<boolean> {
-    // Query all page numbers belonging to this book
+    // Query all pages belonging to this book
     const { data: pages, error: pagesError } = await supabase
       .from('book_pages')
-      .select('page_number')
+      .select('page_number, image_url')
       .eq('book_id', bookId)
 
     if (pagesError) {
@@ -96,12 +96,25 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
     }
 
     for (const page of pages) {
+      // Check if DB already has image_url (uploaded by user)
+      if (page.image_url) continue
+
+      // Otherwise, look for any uploaded file in storage
       const prefix = `${bookId}/${page.page_number}`
       const { data: objects, error: listError } = await supabase.storage
         .from(STORAGE_BUCKETS.BOOK_PAGES)
         .list(prefix, { limit: 1 })
 
       if (listError || !objects || objects.length === 0) {
+        return false
+      }
+
+      // Check if there are actual image files (not just placeholder)
+      const hasRealImage = objects.some(obj => 
+        obj.name !== '.placeholder' && obj.name !== '' && obj.name !== '.init'
+      )
+      
+      if (!hasRealImage) {
         return false
       }
     }
@@ -506,7 +519,7 @@ export async function generateStoryForBook(bookId: string): Promise<BookWithProf
     }
 
     // Ensure a root folder exists for this book in storage so illustrators have a place to upload
-    await ensureBookFolder(bookId)
+    await ensureBookFolder(bookId, supabase)
 
     // Return the updated book
     return await fetchBookById(bookId) as BookWithProfiles

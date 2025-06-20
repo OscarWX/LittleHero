@@ -1,4 +1,5 @@
 import { createSupabaseClient } from '@/lib/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Storage bucket names (using hyphens as required by Supabase)
 export const STORAGE_BUCKETS = {
@@ -186,9 +187,8 @@ export async function checkBookPageImages(bookId: string): Promise<{ pageNumber:
   return results
 }
 
-export async function ensureBookFolder(bookId: string): Promise<void> {
-  const supabase = createSupabaseClient()
-  // No need for user session – this may run in a server context.
+export async function ensureBookFolder(bookId: string, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? createSupabaseClient()
 
   const initPath = `${bookId}/.init`
   const initBlob = new Blob([''], { type: 'text/plain' })
