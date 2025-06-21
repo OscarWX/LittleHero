@@ -10,6 +10,7 @@ export interface GeneratedStory {
   title: string
   pages: StoryPage[]
   totalPages: number
+  generationPrompt?: string
 }
 
 // ------------------------------
@@ -63,7 +64,7 @@ STORY REQUIREMENTS:
 
 BOOK SPECIFICATIONS:
 - Target age: 3-8 years old
-- Total pages: 8-12 pages
+- Total pages: 18 pages
 - Each page should have 1-3 sentences (20-60 words per page)
 - Story should be educational, teaching about ${qualitiesList}
 - Include adventure, friendship, and positive messages
@@ -81,7 +82,7 @@ FORMAT YOUR RESPONSE STRICTLY AS JSON (no markdown, no code fences, no extra tex
       "imageDescription": "Detailed description of what should be illustrated on this page, including character positions, setting, expressions, and visual details"
     }
   ],
-  "totalPages": 8
+  "totalPages": 18
 }
 
 STORY GUIDELINES:
@@ -153,6 +154,7 @@ Please ensure the story is engaging, educational, and celebrates the unique qual
       })
 
       storyData.totalPages = storyData.pages.length
+      storyData.generationPrompt = prompt
 
       return storyData
     } catch (parseError) {

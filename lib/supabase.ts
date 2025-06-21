@@ -15,13 +15,15 @@ function getConfig(): SupabaseConfig {
    * turning into confusing runtime errors or hanging network calls.
    */
   const isDev = process.env.NODE_ENV !== 'production'
+  const isBuild = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 
   if (!url || !anonKey) {
-    if (isDev) {
+    if (isDev || isBuild) {
       // Provide obviously invalid placeholders so that calls will fail fast.
+      // This allows the build to complete but will fail at runtime if actually used
       return {
         url: url ?? 'http://127.0.0.1/invalid-supabase-url',
         anonKey: anonKey ?? 'invalid-anon-key',
@@ -43,6 +45,12 @@ function getConfig(): SupabaseConfig {
 
 // For client-side operations that need session persistence
 export function createSupabaseClient(): SupabaseClient {
+  // Handle build time - return a mock client if in build environment
+  if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV && typeof window === 'undefined') {
+    // Return a mock client for build time that won't actually work
+    return createClient('http://localhost:3000', 'mock-key')
+  }
+
   const { url, anonKey } = getConfig()
 
   // Cache the browser client so we don't create a new instance on every

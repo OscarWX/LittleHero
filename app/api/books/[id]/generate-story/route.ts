@@ -90,6 +90,7 @@ export async function POST(
         .update({
           title: generatedStory.title,
           story_content: JSON.stringify(generatedStory),
+          generation_prompt: generatedStory.generationPrompt,
           status: 'creating-pictures',
         })
         .eq('id', bookId)

@@ -499,6 +499,7 @@ export async function generateStoryForBook(bookId: string): Promise<BookWithProf
       .update({
         title: generatedStory.title,
         story_content: JSON.stringify(generatedStory),
+        generation_prompt: generatedStory.generationPrompt,
         status: 'creating-pictures'
       })
       .eq('id', bookId)
