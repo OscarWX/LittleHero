@@ -104,9 +104,9 @@ export default function SignInPage() {
                   Remember me
                 </label>
               </div>
-              <a href="#" className="text-sm text-yellow-600 hover:text-gray-800 nunito-font">
+              <Link href="/forgot-password" className="text-sm text-yellow-600 hover:text-gray-800 nunito-font">
                 Forgot password?
-              </a>
+              </Link>
             </div>
             <button
               type="submit"

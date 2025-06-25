@@ -7,7 +7,7 @@ export interface Book {
   id: string
   user_id: string
   title: string
-  status: 'draft' | 'creating' | 'generating-story' | 'creating-pictures' | 'processing' | 'ready'
+  status: 'creating' | 'generating-story' | 'creating-pictures' | 'processing' | 'ready'
   cover_url: string | null
   theme: string | null
   qualities: string[] | null
@@ -28,7 +28,7 @@ export interface BookWithProfiles extends Book {
 
 export interface CreateBookPayload {
   title: string
-  status?: 'draft' | 'creating' | 'generating-story' | 'creating-pictures' | 'processing' | 'ready'
+  status?: 'creating' | 'generating-story' | 'creating-pictures' | 'processing' | 'ready'
   cover_url?: string
   theme?: string
   qualities?: string[]
@@ -62,13 +62,25 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
   
   if (!user) return []
 
-  // Fetch all books for this user regardless of status so that we can
-  // dynamically determine if they should now be marked as "ready" by
-  // inspecting storage.  Sorting by creation date keeps the newest at the top.
+  // Clean up abandoned books still in "creating" status for more than 24h
+  try {
+    const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    await supabase
+      .from('books')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('status', 'creating')
+      .lt('created_at', cutoffIso)
+  } catch (cleanupErr) {
+    console.error('Error cleaning up stale creating books:', cleanupErr)
+  }
+
+  // Fetch all user books except those still in the initial "creating" phase
   const { data: books, error: booksError } = await supabase
     .from('books')
     .select('*')
     .eq('user_id', user.id)
+    .neq('status', 'creating')
     .order('created_at', { ascending: false })
 
   if (booksError) {
@@ -228,7 +240,7 @@ export async function createBook(payload: CreateBookPayload): Promise<BookWithPr
     .from('books')
     .delete()
     .eq('user_id', user.id)
-    .in('status', ['creating', 'draft'])
+    .eq('status', 'creating')
 
   const { profile_ids, ...bookData } = payload
 
@@ -545,7 +557,14 @@ export async function createDraftBook(title: string, profileIds: string[]): Prom
     throw new Error('User must be authenticated')
   }
 
-  // Create book with draft status
+  // Remove any previous in-progress ("creating") books so a fresh flow always starts
+  await supabase
+    .from('books')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('status', 'creating')
+
+  // Create book with creating status
   const { data: book, error: bookError } = await supabase
     .from('books')
     .insert({

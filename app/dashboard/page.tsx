@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, BookOpen, Plus, Clock, CheckCircle, ImageIcon, RefreshCw } from "lucide-react"
+import { User, BookOpen, Plus, Clock, CheckCircle, ImageIcon, RefreshCw, LogOut } from "lucide-react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { fetchUserChildProfiles, type ChildProfile } from "@/lib/db/child-profiles"
 import { fetchUserBooks, type BookWithProfiles } from "@/lib/db/books"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth, signOut } from "@/hooks/use-auth"
 
 export default function DashboardPage() {
   const searchParams = useSearchParams()
@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [profiles, setProfiles] = useState<ChildProfile[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
   const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
 
   // Load profiles from Supabase
   useEffect(() => {
@@ -42,6 +43,12 @@ export default function DashboardPage() {
     }
   }, [user, authLoading])
 
+  // Handle logout
+  const handleLogout = async () => {
+    await signOut()
+    router.push("/sign-in")
+  }
+
   if (authLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#FFF8E8]">
@@ -52,6 +59,16 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col h-screen bg-[#FFF8E8]">
+      {/* Top bar */}
+      <header className="flex items-center justify-end p-4 bg-transparent">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1 text-gray-800 hover:text-red-600 nunito-font font-bold"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
+      </header>
       {/* Content area */}
       <main className="flex-1 overflow-y-auto pb-16">
         {activeTab === "profiles" && <ProfilesTab profiles={profiles} />}
@@ -213,7 +230,7 @@ function BooksTab() {
       default:
         return {
           icon: <BookOpen size={18} className="text-gray-500" />,
-          text: "Draft",
+          text: "Creating",
           color: "bg-gray-50 text-gray-700",
         }
     }
@@ -257,7 +274,7 @@ function BooksTab() {
                   )}
 
                   {/* Status badge */}
-                  {book.status && book.status !== 'draft' && (
+                  {book.status && book.status !== 'creating' && (
                     <div
                       className={`absolute bottom-0 left-0 right-0 py-1 px-2 ${status.color} text-xs flex items-center justify-center gap-1`}
                     >
