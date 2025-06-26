@@ -23,7 +23,7 @@ export default async function RootLayout({
   } = await supabase.auth.getSession()
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700&display=swap" rel="stylesheet" />
       </head>

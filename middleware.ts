@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const isAuthRoute = pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
-  const isPublicRoute = pathname === '/' || pathname.startsWith('/_next') || pathname.startsWith('/api')
+  const isPublicRoute = pathname === '/' || pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/forgot-password') || pathname.startsWith('/update-password')
 
   // Allow access to public routes and API routes
   if (isPublicRoute) {
@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect to sign-in if not authenticated and trying to access protected route
-  if (!session && !isAuthRoute) {
+  if (!session && !isPublicRoute && !isAuthRoute) {
     const redirectUrl = new URL('/sign-in', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)
