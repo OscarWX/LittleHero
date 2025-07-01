@@ -1,11 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { generateChildrenStory } from '@/lib/openai'
-import { ensureBookFolder } from '@/lib/storage'
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { generateChildrenStory } from '@/lib/openai';
+import { ensureBookFolder } from '@/lib/storage';
 
 // Helper to fetch a book together with its child profiles for the current user
-async function fetchBookWithProfiles(supabase: any, bookId: string, userId: string) {
+async function fetchBookWithProfiles(
+  supabase: any,
+  bookId: string,
+  userId: string
+) {
   // Fetch the book
   const { data: book, error: bookError } = await supabase
     .from('books')
@@ -16,15 +20,17 @@ async function fetchBookWithProfiles(supabase: any, bookId: string, userId: stri
     )
     .eq('id', bookId)
     .eq('user_id', userId)
-    .single()
+    .single();
 
   if (bookError) {
-    throw new Error(bookError.message)
+    throw new Error(bookError.message);
   }
 
-  const child_profiles = (book.book_profiles || []).map((link: any) => link.child_profiles)
+  const child_profiles = (book.book_profiles || []).map(
+    (link: any) => link.child_profiles
+  );
 
-  return { ...book, child_profiles }
+  return { ...book, child_profiles };
 }
 
 export async function POST(
@@ -32,37 +38,43 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const bookId = params.id
+    const bookId = params.id;
 
     if (!bookId) {
       return NextResponse.json(
         { error: 'Book ID is required' },
         { status: 400 }
-      )
+      );
     }
 
     // Authenticated Supabase client
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createRouteHandlerClient({ cookies });
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json(
         { error: 'User must be authenticated' },
         { status: 401 }
-      )
+      );
     }
 
     // Fetch book and associated profiles
-    const book = await fetchBookWithProfiles(supabase, bookId, user.id)
+    const book = await fetchBookWithProfiles(supabase, bookId, user.id);
 
     // Validate creation data
-    if (!book.theme || !book.qualities || !book.magical_details || !book.special_memories || !book.narrative_style) {
+    if (
+      !book.theme ||
+      !book.qualities ||
+      !book.magical_details ||
+      !book.special_memories ||
+      !book.narrative_style
+    ) {
       return NextResponse.json(
         { error: 'Book creation data is incomplete' },
         { status: 400 }
-      )
+      );
     }
 
     // Update status to generating-story
@@ -70,9 +82,9 @@ export async function POST(
       .from('books')
       .update({ status: 'generating-story' })
       .eq('id', bookId)
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
 
-    let updatedBook
+    let updatedBook;
     try {
       // Generate story via OpenAI
       const generatedStory = await generateChildrenStory(
@@ -82,7 +94,7 @@ export async function POST(
         book.magical_details,
         book.special_memories,
         book.narrative_style
-      )
+      );
 
       // Persist generated story
       const { data, error: updateError } = await supabase
@@ -96,13 +108,13 @@ export async function POST(
         .eq('id', bookId)
         .eq('user_id', user.id)
         .select()
-        .single()
+        .single();
 
       if (updateError) {
-        throw new Error(updateError.message)
+        throw new Error(updateError.message);
       }
 
-      updatedBook = data
+      updatedBook = data;
 
       // Insert pages
       for (const page of generatedStory.pages) {
@@ -111,35 +123,35 @@ export async function POST(
           page_number: page.pageNumber,
           text_content: page.text,
           image_url: null,
-        })
+        });
       }
 
       // Create root folder in storage for illustrators
-      await ensureBookFolder(bookId, supabase)
-
+      await ensureBookFolder(bookId, supabase);
     } catch (err) {
       // On error, revert status back to creating
       await supabase
         .from('books')
         .update({ status: 'creating' })
         .eq('id', bookId)
-        .eq('user_id', user.id)
+        .eq('user_id', user.id);
 
-      throw err
+      throw err;
     }
 
     // Re-fetch with profiles for response
-    const finalBook = await fetchBookWithProfiles(supabase, bookId, user.id)
+    const finalBook = await fetchBookWithProfiles(supabase, bookId, user.id);
 
-    return NextResponse.json({ book: finalBook }, { status: 200 })
+    return NextResponse.json({ book: finalBook }, { status: 200 });
   } catch (error) {
-    console.error('Error generating story:', error)
-    
-    const message = error instanceof Error ? error.message : 'Unknown error occurred'
-    
+    console.error('Error generating story:', error);
+
+    const message =
+      error instanceof Error ? error.message : 'Unknown error occurred';
+
     return NextResponse.json(
       { error: `Failed to generate story: ${message}` },
       { status: 500 }
-    )
+    );
   }
-} 
+}

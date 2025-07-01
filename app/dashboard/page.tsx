@@ -1,146 +1,159 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { User, BookOpen, Plus, Clock, CheckCircle, ImageIcon, RefreshCw, LogOut } from "lucide-react"
-import Link from "next/link"
-import { useSearchParams, useRouter } from "next/navigation"
-import { fetchUserChildProfiles, type ChildProfile } from "@/lib/db/child-profiles"
-import { fetchUserBooks, type BookWithProfiles } from "@/lib/db/books"
-import { useAuth, signOut } from "@/hooks/use-auth"
+import { useState, useEffect } from 'react';
+import {
+  User,
+  BookOpen,
+  Plus,
+  Clock,
+  CheckCircle,
+  ImageIcon,
+  RefreshCw,
+  LogOut,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import {
+  fetchUserChildProfiles,
+  type ChildProfile,
+} from '@/lib/db/child-profiles';
+import { fetchUserBooks, type BookWithProfiles } from '@/lib/db/books';
+import { useAuth, signOut } from '@/hooks/use-auth';
 
 export default function DashboardPage() {
-  const searchParams = useSearchParams()
-  const tabParam = searchParams.get("tab")
-  const [activeTab, setActiveTab] = useState(tabParam === "books" ? "books" : "profiles")
-  const [profiles, setProfiles] = useState<ChildProfile[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
-  const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    tabParam === 'books' ? 'books' : 'profiles'
+  );
+  const [profiles, setProfiles] = useState<ChildProfile[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   // Load profiles from Supabase
   useEffect(() => {
     const loadProfiles = async () => {
       if (authLoading || !user) {
-        return
+        return;
       }
 
       try {
-        const userProfiles = await fetchUserChildProfiles()
-        setProfiles(userProfiles)
+        const userProfiles = await fetchUserChildProfiles();
+        setProfiles(userProfiles);
       } catch (e) {
-        console.error("Error loading profiles", e)
+        console.error('Error loading profiles', e);
       }
-      setIsLoaded(true)
-    }
+      setIsLoaded(true);
+    };
 
-    loadProfiles()
-  }, [user, authLoading])
+    loadProfiles();
+  }, [user, authLoading]);
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      window.location.href = "/sign-in"
+      window.location.href = '/sign-in';
     }
-  }, [user, authLoading])
+  }, [user, authLoading]);
 
   // Handle logout
   const handleLogout = async () => {
-    await signOut()
-    router.push("/sign-in")
-  }
+    await signOut();
+    router.push('/sign-in');
+  };
 
   if (authLoading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFF8E8]">
-        <div className="text-lg text-gray-600 nunito-font">Loading...</div>
+      <div className='flex items-center justify-center min-h-screen bg-[#FFF8E8]'>
+        <div className='text-lg text-gray-600 nunito-font'>Loading...</div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#FFF8E8]">
+    <div className='flex flex-col h-screen bg-[#FFF8E8]'>
       {/* Top bar */}
-      <header className="flex items-center justify-end p-4 bg-transparent">
+      <header className='flex items-center justify-end p-4 bg-transparent'>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1 text-gray-800 hover:text-red-600 nunito-font font-bold"
+          className='flex items-center gap-1 text-gray-800 hover:text-red-600 nunito-font font-bold'
         >
           <LogOut size={18} />
           Logout
         </button>
       </header>
       {/* Content area */}
-      <main className="flex-1 overflow-y-auto pb-16">
-        {activeTab === "profiles" && <ProfilesTab profiles={profiles} />}
-        {activeTab === "books" && <BooksTab />}
+      <main className='flex-1 overflow-y-auto pb-16'>
+        {activeTab === 'profiles' && <ProfilesTab profiles={profiles} />}
+        {activeTab === 'books' && <BooksTab />}
       </main>
 
       {/* Floating action button */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20">
+      <div className='fixed bottom-8 left-1/2 -translate-x-1/2 z-20'>
         <Link
-          href={"/add-book"}
-          className="w-14 h-14 rounded-full bg-yellow-300 flex items-center justify-center shadow-lg"
+          href={'/add-book'}
+          className='w-14 h-14 rounded-full bg-yellow-300 flex items-center justify-center shadow-lg'
         >
-          <span className="text-2xl font-bold text-gray-900">+</span>
+          <span className='text-2xl font-bold text-gray-900'>+</span>
         </Link>
       </div>
 
       {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#C1E1C1] h-16">
-        <div className="flex justify-around items-center h-full">
+      <nav className='fixed bottom-0 left-0 right-0 bg-[#C1E1C1] h-16'>
+        <div className='flex justify-around items-center h-full'>
           <button
-            onClick={() => setActiveTab("profiles")}
+            onClick={() => setActiveTab('profiles')}
             className={`flex flex-col items-center justify-center w-full h-full ${
-              activeTab === "profiles" ? "text-gray-900" : "text-gray-600"
+              activeTab === 'profiles' ? 'text-gray-900' : 'text-gray-600'
             }`}
           >
             <User size={24} />
-            <span className="text-xs mt-1 nunito-font">Profiles</span>
+            <span className='text-xs mt-1 nunito-font'>Profiles</span>
           </button>
-          <div className="w-16"></div> {/* Spacer for the FAB */}
+          <div className='w-16'></div> {/* Spacer for the FAB */}
           <button
-            onClick={() => setActiveTab("books")}
+            onClick={() => setActiveTab('books')}
             className={`flex flex-col items-center justify-center w-full h-full ${
-              activeTab === "books" ? "text-gray-900" : "text-gray-600"
+              activeTab === 'books' ? 'text-gray-900' : 'text-gray-600'
             }`}
           >
             <BookOpen size={24} />
-            <span className="text-xs mt-1 nunito-font">Books</span>
+            <span className='text-xs mt-1 nunito-font'>Books</span>
           </button>
         </div>
       </nav>
     </div>
-  )
+  );
 }
 
 function ProfilesTab({ profiles }: { profiles: ChildProfile[] }) {
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Profiles</h1>
+    <div className='p-6'>
+      <h1 className='text-2xl font-bold text-gray-900 mb-8'>Profiles</h1>
 
       {/* Fixed grid layout with proper spacing */}
-      <div className="flex flex-wrap justify-center sm:justify-start gap-8">
-
+      <div className='flex flex-wrap justify-center sm:justify-start gap-8'>
         {/* Existing profiles */}
-        {profiles.map((profile) => (
-          <div key={profile.id} className="flex flex-col items-center">
-            <Link href={`/profile/${profile.id}`} className="block">
-              <div className="w-32 h-32 rounded-full flex items-center justify-center mb-2 overflow-hidden shadow-md shadow-gray-400 bg-gradient-to-br from-yellow-200 to-orange-200">
+        {profiles.map(profile => (
+          <div key={profile.id} className='flex flex-col items-center'>
+            <Link href={`/profile/${profile.id}`} className='block'>
+              <div className='w-32 h-32 rounded-full flex items-center justify-center mb-2 overflow-hidden shadow-md shadow-gray-400 bg-gradient-to-br from-yellow-200 to-orange-200'>
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
                     alt={profile.name}
-                    className="object-cover w-full h-full"
-                    onError={(e) => {
+                    className='object-cover w-full h-full'
+                    onError={e => {
                       // If image fails to load, show fallback
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                      const fallback = target.nextElementSibling as HTMLElement
-                      if (fallback) fallback.style.display = 'block'
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'block';
                     }}
                   />
                 ) : null}
-                <span 
+                <span
                   className={`text-white text-2xl font-bold ${profile.avatar_url ? 'hidden' : 'block'}`}
                   style={{ display: profile.avatar_url ? 'none' : 'block' }}
                 >
@@ -148,104 +161,108 @@ function ProfilesTab({ profiles }: { profiles: ChildProfile[] }) {
                 </span>
               </div>
             </Link>
-            <span className="text-gray-900 nunito-font text-center">{profile.name}</span>
+            <span className='text-gray-900 nunito-font text-center'>
+              {profile.name}
+            </span>
           </div>
         ))}
 
         {/* Create new profile button - moved to the end */}
-        <div className="flex flex-col items-center">
-          <Link href="/add-profile" className="block">
-            <div className="w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center mb-2 shadow-md shadow-gray-400">
-              <Plus size={32} className="text-gray-500" />
+        <div className='flex flex-col items-center'>
+          <Link href='/add-profile' className='block'>
+            <div className='w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center mb-2 shadow-md shadow-gray-400'>
+              <Plus size={32} className='text-gray-500' />
             </div>
           </Link>
-          <span className="text-gray-400 nunito-font text-center">Create a profile</span>
+          <span className='text-gray-400 nunito-font text-center'>
+            Create a profile
+          </span>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function BooksTab() {
-  const [books, setBooks] = useState<BookWithProfiles[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const { user, loading: authLoading } = useAuth()
+  const [books, setBooks] = useState<BookWithProfiles[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
   // Load books from Supabase
   const loadBooks = async (showRefreshing = false) => {
     if (authLoading || !user) {
-      return
+      return;
     }
 
-    if (showRefreshing) setIsRefreshing(true)
+    if (showRefreshing) setIsRefreshing(true);
 
     try {
-      const userBooks = await fetchUserBooks()
-      setBooks(userBooks)
+      const userBooks = await fetchUserBooks();
+      setBooks(userBooks);
     } catch (e) {
-      console.error("Error loading books", e)
+      console.error('Error loading books', e);
     }
-    
-    setIsLoaded(true)
-    if (showRefreshing) setIsRefreshing(false)
-  }
+
+    setIsLoaded(true);
+    if (showRefreshing) setIsRefreshing(false);
+  };
 
   useEffect(() => {
-    loadBooks()
-  }, [user, authLoading])
+    loadBooks();
+  }, [user, authLoading]);
 
   // Auto-refresh every 30 seconds to check for status updates
   useEffect(() => {
-    if (!user || authLoading) return
+    if (!user || authLoading) return;
 
     const interval = setInterval(() => {
-      loadBooks()
-    }, 30000) // Refresh every 30 seconds
+      loadBooks();
+    }, 30000); // Refresh every 30 seconds
 
-    return () => clearInterval(interval)
-  }, [user, authLoading])
+    return () => clearInterval(interval);
+  }, [user, authLoading]);
 
   // Get status icon and text for a book
   const getBookStatus = (status?: string) => {
     switch (status) {
-      case "creating-pictures":
+      case 'creating-pictures':
         return {
-          icon: <ImageIcon size={18} className="text-blue-600" />,
-          text: "Creating pictures...",
-          color: "bg-blue-50 text-blue-700",
-        }
-      case "processing":
+          icon: <ImageIcon size={18} className='text-blue-600' />,
+          text: 'Creating pictures...',
+          color: 'bg-blue-50 text-blue-700',
+        };
+      case 'processing':
         return {
-          icon: <Clock size={18} className="text-orange-500" />,
-          text: "Processing...",
-          color: "bg-orange-50 text-orange-700",
-        }
-      case "ready":
+          icon: <Clock size={18} className='text-orange-500' />,
+          text: 'Processing...',
+          color: 'bg-orange-50 text-orange-700',
+        };
+      case 'ready':
         return {
-          icon: <CheckCircle size={18} className="text-green-500" />,
-          text: "Ready to read",
-          color: "bg-green-50 text-green-700",
-        }
+          icon: <CheckCircle size={18} className='text-green-500' />,
+          text: 'Ready to read',
+          color: 'bg-green-50 text-green-700',
+        };
       default:
         return {
-          icon: <BookOpen size={18} className="text-gray-500" />,
-          text: "Creating",
-          color: "bg-gray-50 text-gray-700",
-        }
+          icon: <BookOpen size={18} className='text-gray-500' />,
+          text: 'Creating',
+          color: 'bg-gray-50 text-gray-700',
+        };
     }
-  }
+  };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Books</h1>
+    <div className='p-6'>
+      <div className='flex justify-between items-center mb-8'>
+        <h1 className='text-2xl font-bold text-gray-900'>Books</h1>
         <button
           onClick={() => loadBooks(true)}
           disabled={isRefreshing}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-            isRefreshing 
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+            isRefreshing
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
           }`}
         >
@@ -254,23 +271,23 @@ function BooksTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-8 gap-y-10 justify-items-center">
+      <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-8 gap-y-10 justify-items-center'>
         {/* Existing books */}
-        {books.map((book) => {
-          const status = getBookStatus(book.status)
+        {books.map(book => {
+          const status = getBookStatus(book.status);
 
           return (
-            <div key={book.id} className="flex flex-col items-center">
-              <Link href={`/book/${book.id}/preview`} className="block">
-                <div className="w-32 h-32 rounded-lg flex items-center justify-center mb-2 overflow-hidden relative shadow-md shadow-gray-400 bg-gradient-to-br from-yellow-200 to-orange-200">
+            <div key={book.id} className='flex flex-col items-center'>
+              <Link href={`/book/${book.id}/preview`} className='block'>
+                <div className='w-32 h-32 rounded-lg flex items-center justify-center mb-2 overflow-hidden relative shadow-md shadow-gray-400 bg-gradient-to-br from-yellow-200 to-orange-200'>
                   {book.cover_url ? (
                     <img
                       src={book.cover_url}
                       alt={book.title}
-                      className="object-cover w-full h-full"
+                      className='object-cover w-full h-full'
                     />
                   ) : (
-                    <span className="text-white text-2xl font-bold">📚</span>
+                    <span className='text-white text-2xl font-bold'>📚</span>
                   )}
 
                   {/* Status badge */}
@@ -279,32 +296,38 @@ function BooksTab() {
                       className={`absolute bottom-0 left-0 right-0 py-1 px-2 ${status.color} text-xs flex items-center justify-center gap-1`}
                     >
                       {status.icon}
-                      <span className="nunito-font font-bold truncate">{status.text}</span>
+                      <span className='nunito-font font-bold truncate'>
+                        {status.text}
+                      </span>
                     </div>
                   )}
                 </div>
               </Link>
-              <span className="text-gray-900 nunito-font text-center">{book.title}</span>
+              <span className='text-gray-900 nunito-font text-center'>
+                {book.title}
+              </span>
             </div>
-          )
+          );
         })}
 
         {/* Create new book button */}
-        <div className="flex flex-col items-center">
-          <Link href="/add-book" className="block">
-            <div className="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center mb-2 shadow-md shadow-gray-400">
-              <Plus size={32} className="text-gray-500" />
+        <div className='flex flex-col items-center'>
+          <Link href='/add-book' className='block'>
+            <div className='w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center mb-2 shadow-md shadow-gray-400'>
+              <Plus size={32} className='text-gray-500' />
             </div>
           </Link>
-          <span className="text-gray-400 nunito-font text-center">Create a book</span>
+          <span className='text-gray-400 nunito-font text-center'>
+            Create a book
+          </span>
         </div>
 
         {books.length === 0 && isLoaded && (
-          <div className="w-full text-center text-gray-500 mt-8">
+          <div className='w-full text-center text-gray-500 mt-8'>
             <p>No books yet. Create your first book!</p>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

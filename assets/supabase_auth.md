@@ -16,6 +16,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 Ensure you have the following tables in your Supabase database:
 
 ### Profiles Table
+
 ```sql
 -- Create profiles table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -44,6 +45,7 @@ CREATE POLICY "Users can insert own profile" ON public.profiles
 ## 3. Authentication Policies
 
 Enable email authentication in your Supabase dashboard:
+
 1. Go to Authentication → Providers
 2. Enable Email provider
 3. Save changes
@@ -58,6 +60,7 @@ pnpm install
 ```
 
 This will install the new auth helper dependencies:
+
 - @supabase/auth-helpers-nextjs
 - @supabase/auth-helpers-react
 
@@ -82,7 +85,8 @@ The following minimal changes were made to fix authentication persistence:
 ## 7. Testing
 
 After installation and setup:
+
 1. Sign up for a new account
 2. Close the browser and reopen
 3. Navigate to the app - you should automatically be signed in
-4. Authentication state should persist across page reloads and browser sessions 
+4. Authentication state should persist across page reloads and browser sessions

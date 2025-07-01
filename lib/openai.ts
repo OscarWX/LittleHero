@@ -1,16 +1,16 @@
-import OpenAI from 'openai'
+import OpenAI from 'openai';
 
 export interface StoryPage {
-  pageNumber: number
-  text: string
-  imageDescription: string
+  pageNumber: number;
+  text: string;
+  imageDescription: string;
 }
 
 export interface GeneratedStory {
-  title: string
-  pages: StoryPage[]
-  totalPages: number
-  generationPrompt?: string
+  title: string;
+  pages: StoryPage[];
+  totalPages: number;
+  generationPrompt?: string;
 }
 
 // ------------------------------
@@ -28,27 +28,34 @@ export async function generateChildrenStory(
   specialMemories: string,
   narrativeStyle: string
 ): Promise<GeneratedStory> {
-  
   // Initialize OpenAI client inside the function
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
-  })
-  
-  // Construct character descriptions
-  const characterDescriptions = childProfiles.map(profile => {
-    let desc = `${profile.name} (${profile.gender || 'child'})`
-    if (profile.appearance) {
-      const appearance = []
-      if (profile.appearance.hairColor) appearance.push(`${profile.appearance.hairColor} hair`)
-      if (profile.appearance.eyeColor) appearance.push(`${profile.appearance.eyeColor} eyes`)
-      if (appearance.length > 0) desc += ` with ${appearance.join(' and ')}`
-    }
-    if (profile.special_traits) desc += `. Special traits: ${profile.special_traits}`
-    if (profile.favorite_thing) desc += `. Loves: ${profile.favorite_thing}`
-    return desc
-  }).join('\n')
+  });
 
-  const qualitiesList = qualities.length > 0 ? qualities.join(', ') : 'kindness, bravery, curiosity'
+  // Construct character descriptions
+  const characterDescriptions = childProfiles
+    .map(profile => {
+      let desc = `${profile.name} (${profile.gender || 'child'})`;
+      if (profile.appearance) {
+        const appearance = [];
+        if (profile.appearance.hairColor)
+          appearance.push(`${profile.appearance.hairColor} hair`);
+        if (profile.appearance.eyeColor)
+          appearance.push(`${profile.appearance.eyeColor} eyes`);
+        if (appearance.length > 0) desc += ` with ${appearance.join(' and ')}`;
+      }
+      if (profile.special_traits)
+        desc += `. Special traits: ${profile.special_traits}`;
+      if (profile.favorite_thing) desc += `. Loves: ${profile.favorite_thing}`;
+      return desc;
+    })
+    .join('\n');
+
+  const qualitiesList =
+    qualities.length > 0
+      ? qualities.join(', ')
+      : 'kindness, bravery, curiosity';
 
   const prompt = `Create a magical children's picture book story with the following specifications:
 
@@ -95,77 +102,84 @@ STORY GUIDELINES:
 - Keep vocabulary appropriate for young children
 - Include emotional moments that children can relate to
 
-Please ensure the story is engaging, educational, and celebrates the unique qualities of ${childProfiles.map(p => p.name).join(' and ')}.`
+Please ensure the story is engaging, educational, and celebrates the unique qualities of ${childProfiles.map(p => p.name).join(' and ')}.`;
 
   try {
     // Ensure we have an API key available.  Without it we cannot proceed, so we
     // throw an error instead of returning a fabricated story.
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured')
+      throw new Error('OpenAI API key not configured');
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: 'gpt-4o',
       messages: [
         {
-          role: "system",
-          content: "You are a creative children's book author who specializes in educational and magical stories for young children. You create engaging, age-appropriate content that teaches valuable life lessons while entertaining children."
+          role: 'system',
+          content:
+            "You are a creative children's book author who specializes in educational and magical stories for young children. You create engaging, age-appropriate content that teaches valuable life lessons while entertaining children.",
         },
         {
-          role: "user",
-          content: prompt
-        }
+          role: 'user',
+          content: prompt,
+        },
       ],
       temperature: 0.8, // Creative but controlled
       max_tokens: 2000,
-    })
+    });
 
-    let response = completion.choices[0]?.message?.content
+    let response = completion.choices[0]?.message?.content;
     if (!response) {
-      throw new Error('OpenAI request succeeded but no content was returned')
+      throw new Error('OpenAI request succeeded but no content was returned');
     }
 
     // Clean common formatting issues (e.g., markdown code fences)
-    response = response.trim()
+    response = response.trim();
     if (response.startsWith('```')) {
       // Strip the first line (``` or ```json) and the trailing ```
-      response = response.replace(/^```[a-zA-Z]*\n/, '').replace(/```$/, '').trim()
+      response = response
+        .replace(/^```[a-zA-Z]*\n/, '')
+        .replace(/```$/, '')
+        .trim();
     }
 
     // If response has leading text before the JSON object, attempt to extract
-    const firstBrace = response.indexOf('{')
-    const lastBrace = response.lastIndexOf('}')
+    const firstBrace = response.indexOf('{');
+    const lastBrace = response.lastIndexOf('}');
     if (firstBrace !== -1 && lastBrace !== -1) {
-      response = response.substring(firstBrace, lastBrace + 1)
+      response = response.substring(firstBrace, lastBrace + 1);
     }
 
     // Parse the JSON response
     try {
-      const storyData = JSON.parse(response) as GeneratedStory
-      
+      const storyData = JSON.parse(response) as GeneratedStory;
+
       // Validate the response structure
-      if (!storyData.title || !storyData.pages || !Array.isArray(storyData.pages)) {
-        throw new Error('OpenAI returned invalid story structure')
+      if (
+        !storyData.title ||
+        !storyData.pages ||
+        !Array.isArray(storyData.pages)
+      ) {
+        throw new Error('OpenAI returned invalid story structure');
       }
 
       // Ensure page numbers are sequential
       storyData.pages.forEach((page, index) => {
-        page.pageNumber = index + 1
-      })
+        page.pageNumber = index + 1;
+      });
 
-      storyData.totalPages = storyData.pages.length
-      storyData.generationPrompt = prompt
+      storyData.totalPages = storyData.pages.length;
+      storyData.generationPrompt = prompt;
 
-      return storyData
+      return storyData;
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', response, parseError)
-      throw new Error('Unable to parse JSON returned by OpenAI')
+      console.error('Failed to parse OpenAI response:', response, parseError);
+      throw new Error('Unable to parse JSON returned by OpenAI');
     }
-
   } catch (error) {
-    console.error('OpenAI API Error:', error)
+    console.error('OpenAI API Error:', error);
     // Re-throw so that the caller can handle the problem (e.g. surface an error
     // to the UI instead of hiding it behind a generic fallback story).
-    throw error
+    throw error;
   }
-} 
+}

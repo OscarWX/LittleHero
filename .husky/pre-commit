@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# 格式化所有代码
+# npx prettier --write .
+
+# 自动修复和检查 lint
+# npx eslint . --fix
+
+# 类型检查
+# npx tsc --noEmit
+
+# lint-staged just check the files that are going to be committed
+# 即使 lint-staged 失败也继续执行，不阻止 commit
+npx lint-staged || true

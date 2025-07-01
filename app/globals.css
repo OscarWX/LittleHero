@@ -3,27 +3,27 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: "Junegull";
-  src: url("/fonts/junegull.woff2") format("woff2");
+  font-family: 'Junegull';
+  src: url('/fonts/junegull.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Nunito";
-  src: url("/fonts/nunito-bold.woff2") format("woff2");
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-bold.woff2') format('woff2');
   font-weight: bold;
   font-style: normal;
   font-display: swap;
 }
 
 .junegull-font {
-  font-family: "Junegull", sans-serif;
+  font-family: 'Junegull', sans-serif;
 }
 
 .nunito-font {
-  font-family: "Nunito", sans-serif;
+  font-family: 'Nunito', sans-serif;
 }
 
 :root {

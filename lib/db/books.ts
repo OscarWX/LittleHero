@@ -1,78 +1,90 @@
-import { createSupabaseClient } from '@/lib/supabase'
-import { ChildProfile } from './child-profiles'
-import { generateChildrenStory, type GeneratedStory } from '@/lib/openai'
-import { STORAGE_BUCKETS, ensureBookFolder } from '@/lib/storage'
+import { createSupabaseClient } from '@/lib/supabase';
+import { ChildProfile } from './child-profiles';
+import { generateChildrenStory, type GeneratedStory } from '@/lib/openai';
+import { STORAGE_BUCKETS, ensureBookFolder } from '@/lib/storage';
 
 export interface Book {
-  id: string
-  user_id: string
-  title: string
-  status: 'creating' | 'generating-story' | 'creating-pictures' | 'processing' | 'ready'
-  cover_url: string | null
-  theme: string | null
-  qualities: string[] | null
-  magical_details: string | null
-  magical_image_url: string | null
-  special_memories: string | null
-  special_memories_image_url: string | null
-  narrative_style: string | null
-  creation_data: any | null
-  story_content: string | null
-  generation_prompt: string | null
-  created_at: string
+  id: string;
+  user_id: string;
+  title: string;
+  status:
+    | 'creating'
+    | 'generating-story'
+    | 'creating-pictures'
+    | 'processing'
+    | 'ready';
+  cover_url: string | null;
+  theme: string | null;
+  qualities: string[] | null;
+  magical_details: string | null;
+  magical_image_url: string | null;
+  special_memories: string | null;
+  special_memories_image_url: string | null;
+  narrative_style: string | null;
+  creation_data: any | null;
+  story_content: string | null;
+  generation_prompt: string | null;
+  created_at: string;
 }
 
 export interface BookWithProfiles extends Book {
-  child_profiles: ChildProfile[]
+  child_profiles: ChildProfile[];
 }
 
 export interface CreateBookPayload {
-  title: string
-  status?: 'creating' | 'generating-story' | 'creating-pictures' | 'processing' | 'ready'
-  cover_url?: string
-  theme?: string
-  qualities?: string[]
-  magical_details?: string
-  magical_image_url?: string
-  special_memories?: string
-  special_memories_image_url?: string
-  narrative_style?: string
-  creation_data?: any
-  story_content?: string
-  generation_prompt?: string
-  profile_ids?: string[] // Child profile IDs to associate with this book
+  title: string;
+  status?:
+    | 'creating'
+    | 'generating-story'
+    | 'creating-pictures'
+    | 'processing'
+    | 'ready';
+  cover_url?: string;
+  theme?: string;
+  qualities?: string[];
+  magical_details?: string;
+  magical_image_url?: string;
+  special_memories?: string;
+  special_memories_image_url?: string;
+  narrative_style?: string;
+  creation_data?: any;
+  story_content?: string;
+  generation_prompt?: string;
+  profile_ids?: string[]; // Child profile IDs to associate with this book
 }
 
 export interface UpdateBookPayload extends Partial<CreateBookPayload> {
-  id: string
+  id: string;
 }
 
 export interface BookPage {
-  id: number
-  book_id: string
-  page_number: number
-  image_url: string | null
-  text_content: string | null
-  created_at: string
+  id: number;
+  book_id: string;
+  page_number: number;
+  image_url: string | null;
+  text_content: string | null;
+  created_at: string;
 }
 
 export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) return []
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
 
   // Clean up abandoned books still in "creating" status for more than 24h
   try {
-    const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     await supabase
       .from('books')
       .delete()
       .eq('user_id', user.id)
       .eq('status', 'creating')
-      .lt('created_at', cutoffIso)
+      .lt('created_at', cutoffIso);
   } catch (cleanupErr) {
-    console.error('Error cleaning up stale creating books:', cleanupErr)
+    console.error('Error cleaning up stale creating books:', cleanupErr);
   }
 
   // Fetch all user books except those still in the initial "creating" phase
@@ -81,14 +93,14 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
     .select('*')
     .eq('user_id', user.id)
     .neq('status', 'creating')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (booksError) {
-    throw new Error(booksError.message)
+    throw new Error(booksError.message);
   }
 
   if (!books || books.length === 0) {
-    return []
+    return [];
   }
 
   // Helper that checks if every page for a book has at least one image file or image_url
@@ -97,82 +109,87 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
     const { data: pages, error: pagesError } = await supabase
       .from('book_pages')
       .select('page_number, image_url')
-      .eq('book_id', bookId)
+      .eq('book_id', bookId);
 
     if (pagesError) {
-      throw new Error(pagesError.message)
+      throw new Error(pagesError.message);
     }
 
     if (!pages || pages.length === 0) {
-      return false
+      return false;
     }
 
     for (const page of pages) {
       // Check if DB already has image_url (uploaded by user)
-      if (page.image_url) continue
+      if (page.image_url) continue;
 
       // Otherwise, look for any uploaded file in storage
-      const prefix = `${bookId}/${page.page_number}`
+      const prefix = `${bookId}/${page.page_number}`;
       const { data: objects, error: listError } = await supabase.storage
         .from(STORAGE_BUCKETS.BOOK_PAGES)
-        .list(prefix, { limit: 1 })
+        .list(prefix, { limit: 1 });
 
       if (listError || !objects || objects.length === 0) {
-        return false
+        return false;
       }
 
       // Check if there are actual image files (not just placeholder)
-      const hasRealImage = objects.some(obj => 
-        obj.name !== '.placeholder' && obj.name !== '' && obj.name !== '.init'
-      )
-      
+      const hasRealImage = objects.some(
+        obj =>
+          obj.name !== '.placeholder' && obj.name !== '' && obj.name !== '.init'
+      );
+
       if (!hasRealImage) {
-        return false
+        return false;
       }
     }
 
-    return true
+    return true;
   }
 
   // Fetch associated child profiles for each book and, if the book is in
   // the "creating-pictures" phase, verify if all images now exist. If so we
   // immediately update the book status to "ready".
-  const booksWithProfiles: BookWithProfiles[] = []
-  
+  const booksWithProfiles: BookWithProfiles[] = [];
+
   for (const book of books) {
     const { data: profileLinks, error: profileLinksError } = await supabase
       .from('book_profiles')
-      .select(`
+      .select(
+        `
         child_profiles (*)
-      `)
-      .eq('book_id', book.id)
+      `
+      )
+      .eq('book_id', book.id);
 
     if (profileLinksError) {
-      throw new Error(profileLinksError.message)
+      throw new Error(profileLinksError.message);
     }
 
-    const childProfiles = profileLinks?.map((link: any) => link.child_profiles).filter(Boolean) || []
+    const childProfiles =
+      profileLinks?.map((link: any) => link.child_profiles).filter(Boolean) ||
+      [];
 
     // If book is still creating pictures, check storage for completion
-    let finalStatus = book.status
+    let finalStatus = book.status;
     if (book.status === 'creating-pictures') {
       try {
-        const complete = await bookHasAllPageImages(book.id)
+        const complete = await bookHasAllPageImages(book.id);
         if (complete) {
           // Update DB status to ready
           const { error: updateErr } = await supabase
             .from('books')
             .update({ status: 'ready' })
             .eq('id', book.id)
-            .eq('user_id', user.id)
+            .eq('user_id', user.id);
 
           if (!updateErr) {
-            finalStatus = 'ready'
+            finalStatus = 'ready';
           }
         }
       } catch (e) {
         // Fail silently – dashboard will simply continue to show current status
-        console.error('Error checking page images:', e)
+        console.error('Error checking page images:', e);
       }
     }
 
@@ -180,17 +197,21 @@ export async function fetchUserBooks(): Promise<BookWithProfiles[]> {
       ...book,
       status: finalStatus,
       child_profiles: childProfiles,
-    })
+    });
   }
 
-  return booksWithProfiles
+  return booksWithProfiles;
 }
 
-export async function fetchBookById(bookId: string): Promise<BookWithProfiles | null> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) return null
+export async function fetchBookById(
+  bookId: string
+): Promise<BookWithProfiles | null> {
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
 
   // Fetch book
   const { data: book, error: bookError } = await supabase
@@ -198,41 +219,48 @@ export async function fetchBookById(bookId: string): Promise<BookWithProfiles | 
     .select('*')
     .eq('id', bookId)
     .eq('user_id', user.id) // Ensure user can only access their own books
-    .single()
+    .single();
 
   if (bookError) {
     if (bookError.code === 'PGRST116') {
-      return null // Book not found
+      return null; // Book not found
     }
-    throw new Error(bookError.message)
+    throw new Error(bookError.message);
   }
 
   // Fetch associated child profiles
   const { data: profileLinks, error: profileLinksError } = await supabase
     .from('book_profiles')
-    .select(`
+    .select(
+      `
       child_profiles (*)
-    `)
-    .eq('book_id', bookId)
+    `
+    )
+    .eq('book_id', bookId);
 
   if (profileLinksError) {
-    throw new Error(profileLinksError.message)
+    throw new Error(profileLinksError.message);
   }
 
-  const childProfiles = profileLinks?.map((link: any) => link.child_profiles).filter(Boolean) || []
+  const childProfiles =
+    profileLinks?.map((link: any) => link.child_profiles).filter(Boolean) || [];
 
   return {
     ...book,
-    child_profiles: childProfiles
-  }
+    child_profiles: childProfiles,
+  };
 }
 
-export async function createBook(payload: CreateBookPayload): Promise<BookWithProfiles> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+export async function createBook(
+  payload: CreateBookPayload
+): Promise<BookWithProfiles> {
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
   // Optionally remove orphaned/incomplete books for this user
@@ -240,9 +268,9 @@ export async function createBook(payload: CreateBookPayload): Promise<BookWithPr
     .from('books')
     .delete()
     .eq('user_id', user.id)
-    .eq('status', 'creating')
+    .eq('status', 'creating');
 
-  const { profile_ids, ...bookData } = payload
+  const { profile_ids, ...bookData } = payload;
 
   // Create book
   const { data: book, error: bookError } = await supabase
@@ -252,41 +280,45 @@ export async function createBook(payload: CreateBookPayload): Promise<BookWithPr
       ...bookData,
     })
     .select()
-    .single()
+    .single();
 
   if (bookError) {
-    throw new Error(bookError.message)
+    throw new Error(bookError.message);
   }
 
   // Associate child profiles if provided
   if (profile_ids && profile_ids.length > 0) {
     const bookProfileLinks = profile_ids.map(profileId => ({
       book_id: book.id,
-      profile_id: profileId
-    }))
+      profile_id: profileId,
+    }));
 
     const { error: linkError } = await supabase
       .from('book_profiles')
-      .insert(bookProfileLinks)
+      .insert(bookProfileLinks);
 
     if (linkError) {
-      throw new Error(linkError.message)
+      throw new Error(linkError.message);
     }
   }
 
   // Return the created book with profiles
-  return await fetchBookById(book.id) as BookWithProfiles
+  return (await fetchBookById(book.id)) as BookWithProfiles;
 }
 
-export async function updateBook(payload: UpdateBookPayload): Promise<BookWithProfiles> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+export async function updateBook(
+  payload: UpdateBookPayload
+): Promise<BookWithProfiles> {
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
-  const { id, profile_ids, ...updateData } = payload
+  const { id, profile_ids, ...updateData } = payload;
 
   // Update book
   const { data: book, error: bookError } = await supabase
@@ -295,97 +327,105 @@ export async function updateBook(payload: UpdateBookPayload): Promise<BookWithPr
     .eq('id', id)
     .eq('user_id', user.id) // Ensure user can only update their own books
     .select()
-    .single()
+    .single();
 
   if (bookError) {
-    throw new Error(bookError.message)
+    throw new Error(bookError.message);
   }
 
   // Update profile associations if provided
   if (profile_ids !== undefined) {
     // Remove existing associations
-    await supabase
-      .from('book_profiles')
-      .delete()
-      .eq('book_id', id)
+    await supabase.from('book_profiles').delete().eq('book_id', id);
 
     // Add new associations
     if (profile_ids.length > 0) {
       const bookProfileLinks = profile_ids.map(profileId => ({
         book_id: id,
-        profile_id: profileId
-      }))
+        profile_id: profileId,
+      }));
 
       const { error: linkError } = await supabase
         .from('book_profiles')
-        .insert(bookProfileLinks)
+        .insert(bookProfileLinks);
 
       if (linkError) {
-        throw new Error(linkError.message)
+        throw new Error(linkError.message);
       }
     }
   }
 
   // Return the updated book with profiles
-  return await fetchBookById(id) as BookWithProfiles
+  return (await fetchBookById(id)) as BookWithProfiles;
 }
 
 export async function deleteBook(bookId: string): Promise<void> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
   const { error } = await supabase
     .from('books')
     .delete()
     .eq('id', bookId)
-    .eq('user_id', user.id) // Ensure user can only delete their own books
+    .eq('user_id', user.id); // Ensure user can only delete their own books
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(error.message);
   }
 }
 
 export async function fetchBookPages(bookId: string): Promise<BookPage[]> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) return []
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
 
   // Verify user owns the book
-  const book = await fetchBookById(bookId)
+  const book = await fetchBookById(bookId);
   if (!book) {
-    throw new Error('Book not found or access denied')
+    throw new Error('Book not found or access denied');
   }
 
   const { data, error } = await supabase
     .from('book_pages')
     .select('*')
     .eq('book_id', bookId)
-    .order('page_number', { ascending: true })
+    .order('page_number', { ascending: true });
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(error.message);
   }
 
-  return data || []
+  return data || [];
 }
 
-export async function createBookPage(bookId: string, pageNumber: number, imageUrl?: string, textContent?: string): Promise<BookPage> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+export async function createBookPage(
+  bookId: string,
+  pageNumber: number,
+  imageUrl?: string,
+  textContent?: string
+): Promise<BookPage> {
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
   // Verify user owns the book
-  const book = await fetchBookById(bookId)
+  const book = await fetchBookById(bookId);
   if (!book) {
-    throw new Error('Book not found or access denied')
+    throw new Error('Book not found or access denied');
   }
 
   const { data, error } = await supabase
@@ -397,94 +437,140 @@ export async function createBookPage(bookId: string, pageNumber: number, imageUr
       text_content: textContent || null,
     })
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(error.message);
   }
 
-  return data
+  return data;
 }
 
 // Book creation data management functions
 export async function updateBookCreationData(
-  bookId: string, 
-  data: Partial<Pick<CreateBookPayload, 'theme' | 'qualities' | 'magical_details' | 'magical_image_url' | 'special_memories' | 'special_memories_image_url' | 'narrative_style' | 'creation_data'>> & { status?: string }
+  bookId: string,
+  data: Partial<
+    Pick<
+      CreateBookPayload,
+      | 'theme'
+      | 'qualities'
+      | 'magical_details'
+      | 'magical_image_url'
+      | 'special_memories'
+      | 'special_memories_image_url'
+      | 'narrative_style'
+      | 'creation_data'
+    >
+  > & { status?: string }
 ): Promise<BookWithProfiles> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  console.log('updateBookCreationData - User:', user?.id, 'BookId:', bookId, 'Data:', data)
-  
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  console.log(
+    'updateBookCreationData - User:',
+    user?.id,
+    'BookId:',
+    bookId,
+    'Data:',
+    data
+  );
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
   // Filter data to only include columns that exist in basic books table
   // This handles the case where the book creation migration hasn't been run yet
-  const basicColumns = ['status', 'title', 'cover_url']
-  const filteredData: any = {}
-  
+  const basicColumns = ['status', 'title', 'cover_url'];
+  const filteredData: any = {};
+
   for (const [key, value] of Object.entries(data)) {
     if (basicColumns.includes(key)) {
-      filteredData[key] = value
+      filteredData[key] = value;
     }
   }
 
   // Try to update with all data first, fall back to basic columns if migration not run
-  let error
-  
+  let error;
+
   // First try with all data
   const { error: fullUpdateError } = await supabase
     .from('books')
     .update(data)
     .eq('id', bookId)
-    .eq('user_id', user.id)
+    .eq('user_id', user.id);
 
   if (fullUpdateError) {
-    console.log('Full update failed, trying basic columns only:', fullUpdateError.message)
-    
+    console.log(
+      'Full update failed, trying basic columns only:',
+      fullUpdateError.message
+    );
+
     // If the error is about missing columns, try with just basic columns
-    if (fullUpdateError.message.includes('column') && Object.keys(filteredData).length > 0) {
+    if (
+      fullUpdateError.message.includes('column') &&
+      Object.keys(filteredData).length > 0
+    ) {
       const { error: basicUpdateError } = await supabase
         .from('books')
         .update(filteredData)
         .eq('id', bookId)
-        .eq('user_id', user.id)
-      
+        .eq('user_id', user.id);
+
       if (basicUpdateError) {
-        console.error('updateBookCreationData - Database error:', basicUpdateError)
-        throw new Error(basicUpdateError.message)
+        console.error(
+          'updateBookCreationData - Database error:',
+          basicUpdateError
+        );
+        throw new Error(basicUpdateError.message);
       }
     } else {
-      console.error('updateBookCreationData - Database error:', fullUpdateError)
-      throw new Error(fullUpdateError.message)
+      console.error(
+        'updateBookCreationData - Database error:',
+        fullUpdateError
+      );
+      throw new Error(fullUpdateError.message);
     }
   }
 
   // Return the updated book
-  const updatedBook = await fetchBookById(bookId) as BookWithProfiles
-  console.log('updateBookCreationData - Success, returning book:', updatedBook?.id)
-  return updatedBook
+  const updatedBook = (await fetchBookById(bookId)) as BookWithProfiles;
+  console.log(
+    'updateBookCreationData - Success, returning book:',
+    updatedBook?.id
+  );
+  return updatedBook;
 }
 
-export async function generateStoryForBook(bookId: string): Promise<BookWithProfiles> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+export async function generateStoryForBook(
+  bookId: string
+): Promise<BookWithProfiles> {
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
   // Get the book with all creation data
-  const book = await fetchBookById(bookId)
+  const book = await fetchBookById(bookId);
   if (!book) {
-    throw new Error('Book not found')
+    throw new Error('Book not found');
   }
 
   // Validate that book has all required creation data
-  if (!book.theme || !book.qualities || !book.magical_details || !book.special_memories || !book.narrative_style) {
-    throw new Error('Book creation data is incomplete')
+  if (
+    !book.theme ||
+    !book.qualities ||
+    !book.magical_details ||
+    !book.special_memories ||
+    !book.narrative_style
+  ) {
+    throw new Error('Book creation data is incomplete');
   }
 
   // Update status to generating-story
@@ -492,7 +578,7 @@ export async function generateStoryForBook(bookId: string): Promise<BookWithProf
     .from('books')
     .update({ status: 'generating-story' })
     .eq('id', bookId)
-    .eq('user_id', user.id)
+    .eq('user_id', user.id);
 
   try {
     // Generate the story using OpenAI
@@ -503,7 +589,7 @@ export async function generateStoryForBook(bookId: string): Promise<BookWithProf
       book.magical_details,
       book.special_memories,
       book.narrative_style
-    )
+    );
 
     // Update book with generated story
     const { error: updateError } = await supabase
@@ -512,13 +598,13 @@ export async function generateStoryForBook(bookId: string): Promise<BookWithProf
         title: generatedStory.title,
         story_content: JSON.stringify(generatedStory),
         generation_prompt: generatedStory.generationPrompt,
-        status: 'creating-pictures'
+        status: 'creating-pictures',
       })
       .eq('id', bookId)
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
 
     if (updateError) {
-      throw new Error(`Failed to save generated story: ${updateError.message}`)
+      throw new Error(`Failed to save generated story: ${updateError.message}`);
     }
 
     // Create book pages with generated content
@@ -528,33 +614,37 @@ export async function generateStoryForBook(bookId: string): Promise<BookWithProf
         page.pageNumber,
         undefined, // No image URL yet
         page.text
-      )
+      );
     }
 
     // Ensure a root folder exists for this book in storage so illustrators have a place to upload
-    await ensureBookFolder(bookId, supabase)
+    await ensureBookFolder(bookId, supabase);
 
     // Return the updated book
-    return await fetchBookById(bookId) as BookWithProfiles
-
+    return (await fetchBookById(bookId)) as BookWithProfiles;
   } catch (error) {
     // Update status back to creating if generation fails
     await supabase
       .from('books')
       .update({ status: 'creating' })
       .eq('id', bookId)
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
 
-    throw error
+    throw error;
   }
 }
 
-export async function createDraftBook(title: string, profileIds: string[]): Promise<BookWithProfiles> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+export async function createDraftBook(
+  title: string,
+  profileIds: string[]
+): Promise<BookWithProfiles> {
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
   // Remove any previous in-progress ("creating") books so a fresh flow always starts
@@ -562,7 +652,7 @@ export async function createDraftBook(title: string, profileIds: string[]): Prom
     .from('books')
     .delete()
     .eq('user_id', user.id)
-    .eq('status', 'creating')
+    .eq('status', 'creating');
 
   // Create book with creating status
   const { data: book, error: bookError } = await supabase
@@ -570,55 +660,57 @@ export async function createDraftBook(title: string, profileIds: string[]): Prom
     .insert({
       user_id: user.id,
       title,
-      status: 'creating'
+      status: 'creating',
     })
     .select()
-    .single()
+    .single();
 
   if (bookError) {
-    throw new Error(bookError.message)
+    throw new Error(bookError.message);
   }
 
   // Associate child profiles
   if (profileIds.length > 0) {
     const bookProfileLinks = profileIds.map(profileId => ({
       book_id: book.id,
-      profile_id: profileId
-    }))
+      profile_id: profileId,
+    }));
 
     const { error: linkError } = await supabase
       .from('book_profiles')
-      .insert(bookProfileLinks)
+      .insert(bookProfileLinks);
 
     if (linkError) {
-      throw new Error(linkError.message)
+      throw new Error(linkError.message);
     }
   }
 
   // Return the created book with profiles
-  return await fetchBookById(book.id) as BookWithProfiles
+  return (await fetchBookById(book.id)) as BookWithProfiles;
 }
 
 export interface BookCreationData {
-  selectedProfiles: string[]
-  theme: string
-  qualities: string[]
-  magicalDetails: string
-  magicalImageUrl?: string
-  specialMemories: string
-  specialMemoriesImageUrl?: string
-  narrativeStyle: string
+  selectedProfiles: string[];
+  theme: string;
+  qualities: string[];
+  magicalDetails: string;
+  magicalImageUrl?: string;
+  specialMemories: string;
+  specialMemoriesImageUrl?: string;
+  narrativeStyle: string;
 }
 
 export async function completeBookCreation(
-  bookId: string, 
+  bookId: string,
   creationData: BookCreationData
 ): Promise<BookWithProfiles> {
-  const supabase = createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const supabase = createSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
 
   // Update book with all creation data
@@ -633,15 +725,15 @@ export async function completeBookCreation(
       special_memories_image_url: creationData.specialMemoriesImageUrl,
       narrative_style: creationData.narrativeStyle,
       creation_data: creationData,
-      status: 'generating-story'
+      status: 'generating-story',
     })
     .eq('id', bookId)
-    .eq('user_id', user.id)
+    .eq('user_id', user.id);
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(error.message);
   }
 
   // Return the updated book
-  return await fetchBookById(bookId) as BookWithProfiles
-} 
+  return (await fetchBookById(bookId)) as BookWithProfiles;
+}

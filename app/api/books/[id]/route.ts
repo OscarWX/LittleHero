@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { STORAGE_BUCKETS } from '@/lib/storage'
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { STORAGE_BUCKETS } from '@/lib/storage';
 
 // GET /api/books/[id] - Fetch a specific book
 export async function GET(
@@ -9,16 +9,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createRouteHandlerClient({ cookies });
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json(
         { error: 'User must be authenticated' },
         { status: 401 }
-      )
+      );
     }
 
     // Fetch book with profiles
@@ -31,19 +31,18 @@ export async function GET(
       )
       .eq('id', params.id)
       .eq('user_id', user.id)
-      .single()
+      .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Book not found' },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: 'Book not found' }, { status: 404 });
       }
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
-    const childProfiles = (book?.book_profiles || []).map((link: any) => link.child_profiles)
+    const childProfiles = (book?.book_profiles || []).map(
+      (link: any) => link.child_profiles
+    );
 
     // If the book is still in creating-pictures, verify if all images now exist in storage.
     if (book.status === 'creating-pictures') {
@@ -52,38 +51,44 @@ export async function GET(
         .from('book_pages')
         .select('id, page_number, image_url')
         .eq('book_id', book.id)
-        .order('page_number')
+        .order('page_number');
 
       if (pages && pages.length > 0) {
-        let complete = true
+        let complete = true;
 
         for (const page of pages) {
           // If DB already has image_url, assume OK
-          if (page.image_url) continue
+          if (page.image_url) continue;
 
           // Otherwise, look for any file in book-pages/{book.id}/{page.page_number}/
           const { data: objects, error: listError } = await supabase.storage
             .from(STORAGE_BUCKETS.BOOK_PAGES)
-            .list(`${book.id}/${page.page_number}`, { limit: 10 })
+            .list(`${book.id}/${page.page_number}`, { limit: 10 });
 
           if (listError || !objects || objects.length === 0) {
-            complete = false
-            break
+            complete = false;
+            break;
           }
 
           // Check for actual image files (not placeholders)
-          const realImages = objects.filter(obj => 
-            obj.name !== '.placeholder' && obj.name !== '' && obj.name !== '.init'
-          )
+          const realImages = objects.filter(
+            obj =>
+              obj.name !== '.placeholder' &&
+              obj.name !== '' &&
+              obj.name !== '.init'
+          );
 
           if (realImages.length === 0) {
-            complete = false
-            break
+            complete = false;
+            break;
           }
 
           // Store first real image file path as image_url
-          const foundPath = `${book.id}/${page.page_number}/${realImages[0].name}`
-          await supabase.from('book_pages').update({ image_url: foundPath }).eq('id', page.id)
+          const foundPath = `${book.id}/${page.page_number}/${realImages[0].name}`;
+          await supabase
+            .from('book_pages')
+            .update({ image_url: foundPath })
+            .eq('id', page.id);
         }
 
         if (complete) {
@@ -91,19 +96,21 @@ export async function GET(
             .from('books')
             .update({ status: 'ready' })
             .eq('id', book.id)
-            .eq('user_id', user.id)
+            .eq('user_id', user.id);
 
-          book.status = 'ready' // reflect immediately
+          book.status = 'ready'; // reflect immediately
         }
       }
     }
 
-    return NextResponse.json({ book: { ...book, child_profiles: childProfiles } })
+    return NextResponse.json({
+      book: { ...book, child_profiles: childProfiles },
+    });
   } catch (error) {
-    console.error('Error fetching book:', error)
+    console.error('Error fetching book:', error);
     return NextResponse.json(
       { error: 'Failed to fetch book' },
       { status: 500 }
-    )
+    );
   }
-} 
+}

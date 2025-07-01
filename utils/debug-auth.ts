@@ -3,10 +3,10 @@
 
 export async function testBookCreationAuth() {
   try {
-    console.log('🔍 Testing Book Creation Authentication...')
-    
+    console.log('🔍 Testing Book Creation Authentication...');
+
     // Test 1: Create a test book first
-    console.log('📚 Step 1: Creating test book...')
+    console.log('📚 Step 1: Creating test book...');
     const createResponse = await fetch('/api/books/creation', {
       method: 'POST',
       headers: {
@@ -14,29 +14,29 @@ export async function testBookCreationAuth() {
       },
       body: JSON.stringify({
         title: 'Test Book',
-        profileIds: [] // Empty for testing
+        profileIds: [], // Empty for testing
       }),
-    })
-    
-    console.log('Create Response Status:', createResponse.status)
-    const createResult = await createResponse.json()
-    console.log('Create Result:', createResult)
-    
+    });
+
+    console.log('Create Response Status:', createResponse.status);
+    const createResult = await createResponse.json();
+    console.log('Create Result:', createResult);
+
     if (!createResponse.ok) {
-      console.error('❌ Failed to create test book')
-      return
+      console.error('❌ Failed to create test book');
+      return;
     }
-    
-    const bookId = createResult.book?.id
+
+    const bookId = createResult.book?.id;
     if (!bookId) {
-      console.error('❌ No book ID returned')
-      return
+      console.error('❌ No book ID returned');
+      return;
     }
-    
-    console.log('✅ Test book created with ID:', bookId)
-    
+
+    console.log('✅ Test book created with ID:', bookId);
+
     // Test 2: Try to update the theme
-    console.log('🎨 Step 2: Testing theme update...')
+    console.log('🎨 Step 2: Testing theme update...');
     const themeResponse = await fetch('/api/books/creation', {
       method: 'PUT',
       headers: {
@@ -44,66 +44,65 @@ export async function testBookCreationAuth() {
       },
       body: JSON.stringify({
         bookId,
-        theme: 'Test Adventure Theme'
+        theme: 'Test Adventure Theme',
       }),
-    })
-    
-    console.log('Theme Update Status:', themeResponse.status)
-    const themeResult = await themeResponse.json()
-    console.log('Theme Update Result:', themeResult)
-    
+    });
+
+    console.log('Theme Update Status:', themeResponse.status);
+    const themeResult = await themeResponse.json();
+    console.log('Theme Update Result:', themeResult);
+
     if (themeResponse.ok) {
-      console.log('✅ Theme update successful!')
+      console.log('✅ Theme update successful!');
     } else {
-      console.error('❌ Theme update failed:', themeResult.error)
+      console.error('❌ Theme update failed:', themeResult.error);
     }
-    
+
     return {
       createSuccess: createResponse.ok,
       themeUpdateSuccess: themeResponse.ok,
       bookId,
       errors: {
         create: createResponse.ok ? null : createResult.error,
-        themeUpdate: themeResponse.ok ? null : themeResult.error
-      }
-    }
-    
+        themeUpdate: themeResponse.ok ? null : themeResult.error,
+      },
+    };
   } catch (error) {
-    console.error('🚨 Test failed with exception:', error)
+    console.error('🚨 Test failed with exception:', error);
     return {
       createSuccess: false,
       themeUpdateSuccess: false,
       bookId: null,
       errors: {
-        exception: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
+        exception: error instanceof Error ? error.message : 'Unknown error',
+      },
+    };
   }
 }
 
 // Simple auth check function
 export async function checkAuthStatus() {
   try {
-    console.log('🔐 Checking authentication status...')
-    
+    console.log('🔐 Checking authentication status...');
+
     const response = await fetch('/api/auth/user', {
       method: 'GET',
-      credentials: 'include'
-    })
-    
-    console.log('Auth check status:', response.status)
-    
+      credentials: 'include',
+    });
+
+    console.log('Auth check status:', response.status);
+
     if (response.ok) {
-      const user = await response.json()
-      console.log('✅ User authenticated:', user)
-      return user
+      const user = await response.json();
+      console.log('✅ User authenticated:', user);
+      return user;
     } else {
-      console.log('❌ User not authenticated')
-      return null
+      console.log('❌ User not authenticated');
+      return null;
     }
   } catch (error) {
-    console.error('🚨 Auth check failed:', error)
-    return null
+    console.error('🚨 Auth check failed:', error);
+    return null;
   }
 }
 
@@ -128,7 +127,7 @@ export function logDatabaseMigrationStatus() {
    - Creates storage buckets
 
 To test: Run testBookCreationAuth() in your browser console
-`)
+`);
 }
 
 // Call this in browser console to debug
@@ -136,7 +135,7 @@ if (typeof window !== 'undefined') {
   (window as any).debugBookAuth = {
     testBookCreationAuth,
     checkAuthStatus,
-    logDatabaseMigrationStatus
-  }
-  console.log('🛠️ Debug tools available: window.debugBookAuth')
-} 
+    logDatabaseMigrationStatus,
+  };
+  console.log('🛠️ Debug tools available: window.debugBookAuth');
+}

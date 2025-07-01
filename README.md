@@ -6,15 +6,15 @@ A full-stack, AI-powered children's book builder. The web application lets paren
 
 ## 1. Tech Stack
 
-| Layer        | Technology                                                                    |
-|--------------|--------------------------------------------------------------------------------|
-| Front-end    | **Next.js 15** (App Router, Server Actions) • **React 19** • **TypeScript**    |
-| Styling      | **Tailwind CSS** • @shadcn/ui (Radix UI primitives + tailwind-variants)         |
-| Auth & DB    | **Supabase** – Postgres, RLS, Auth helpers for Next.js                         |
-| Storage      | Supabase Storage buckets                                                      |
-| AI services  | **OpenAI** (image + story generation)                                         |
-| Charts / UI  | Recharts, Embla carousel, Lucide icons, Sonner toast                           |
-| Tooling      | pnpm, TypeScript 5, ESLint, Prettier                                          |
+| Layer       | Technology                                                                  |
+| ----------- | --------------------------------------------------------------------------- |
+| Front-end   | **Next.js 15** (App Router, Server Actions) • **React 19** • **TypeScript** |
+| Styling     | **Tailwind CSS** • @shadcn/ui (Radix UI primitives + tailwind-variants)     |
+| Auth & DB   | **Supabase** – Postgres, RLS, Auth helpers for Next.js                      |
+| Storage     | Supabase Storage buckets                                                    |
+| AI services | **OpenAI** (image + story generation)                                       |
+| Charts / UI | Recharts, Embla carousel, Lucide icons, Sonner toast                        |
+| Tooling     | pnpm, TypeScript 5, ESLint, Prettier                                        |
 
 ---
 
@@ -59,25 +59,25 @@ All routes are TypeScript files that run on the Edge Runtime (unless file IO is 
 
 ### 3.1 Books
 
-Endpoint                               | Purpose
----------------------------------------|-----------------------------------------------------------
-`POST /api/books/creation`             | Create a stub row for a new book (returns `bookId`).
-`GET  /api/books/{id}`                 | Get a single book owned by the user.
-`POST /api/books/{id}/generate-story`  | Generate story text with OpenAI.
-`GET  /api/books/{id}/pages`           | Fetch ordered list of pages & signed image URLs.
+| Endpoint                              | Purpose                                              |
+| ------------------------------------- | ---------------------------------------------------- |
+| `POST /api/books/creation`            | Create a stub row for a new book (returns `bookId`). |
+| `GET  /api/books/{id}`                | Get a single book owned by the user.                 |
+| `POST /api/books/{id}/generate-story` | Generate story text with OpenAI.                     |
+| `GET  /api/books/{id}/pages`          | Fetch ordered list of pages & signed image URLs.     |
 
 ### 3.2 Book Pages
 
-Endpoint                                   | Purpose
--------------------------------------------|---------------------------------------------
-`POST /api/book-pages/{id}/upload`          | Upload an illustration to Supabase Storage.
+| Endpoint                           | Purpose                                     |
+| ---------------------------------- | ------------------------------------------- |
+| `POST /api/book-pages/{id}/upload` | Upload an illustration to Supabase Storage. |
 
 ### 3.3 Profiles
 
-Endpoint                      | Purpose
-------------------------------|-------------------------------------------
-`GET/POST /api/profiles`      | List or create child profiles.
-`GET/PUT  /api/profiles/{id}` | Retrieve or update an individual profile.
+| Endpoint                      | Purpose                                   |
+| ----------------------------- | ----------------------------------------- |
+| `GET/POST /api/profiles`      | List or create child profiles.            |
+| `GET/PUT  /api/profiles/{id}` | Retrieve or update an individual profile. |
 
 > All endpoints require a valid Supabase session (cookie-based). Unauthorized requests return **401**.
 
@@ -131,12 +131,12 @@ pnpm dev
 
 ### Available Scripts
 
-| Command        | Description                           |
-|----------------|---------------------------------------|
-| `pnpm dev`     | Start Next.js in development mode     |
-| `pnpm build`   | Create a production build             |
-| `pnpm start`   | Run the built app (`.next/`)          |
-| `pnpm lint`    | Lint the codebase with ESLint         |
+| Command      | Description                       |
+| ------------ | --------------------------------- |
+| `pnpm dev`   | Start Next.js in development mode |
+| `pnpm build` | Create a production build         |
+| `pnpm start` | Run the built app (`.next/`)      |
+| `pnpm lint`  | Lint the codebase with ESLint     |
 
 ---
 
@@ -158,7 +158,7 @@ Because the API lives inside Next.js, you can call endpoints directly when `pnpm
 
 ## 9. Deployment
 
-The project is designed for **Vercel + Supabase** – zero-config.   
+The project is designed for **Vercel + Supabase** – zero-config.  
 Just set the env vars in Vercel Dashboard and push to `main`.  
 CI will run `pnpm build` and Vercel will handle edge functions automatically.
 
@@ -166,9 +166,9 @@ CI will run `pnpm build` and Vercel will handle edge functions automatically.
 
 ## 10. Contributing Guide
 
-1. Create a new branch `feat/my-thing` from `main`.  
-2. Run `pnpm lint` & ensure `pnpm build` passes.  
-3. Open a PR with a clear description & screenshots.  
+1. Create a new branch `feat/my-thing` from `main`.
+2. Run `pnpm lint` & ensure `pnpm build` passes.
+3. Open a PR with a clear description & screenshots.
 4. One reviewer approval is required before merge.
 
 ---
@@ -176,4 +176,4 @@ CI will run `pnpm build` and Vercel will handle edge functions automatically.
 ## 11. License
 
 This repository is **proprietary** and **all rights reserved**.  
-© 2024 Little Hero. 
+© 2024 Little Hero.
