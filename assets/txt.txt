@@ -4,8 +4,6 @@ Console sign-in details
 Email sign-in instructions
 Console sign-in URL
 
-AKIAURLGVLTMS3XQPUXJ
-bEIMYFxK17FO22F6Xs+6LA37VTvZR6AbVTpXP1QE
 
 I want you to test run for me and tell me how should i check if the result is correct  and the pictures are indeed in s3! 
 
